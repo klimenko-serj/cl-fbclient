@@ -224,34 +224,26 @@
 	  (T (setf can-nil nil)))
     (values-list (list (get-var-type-by-fbtype-num tp) can-nil))))
 ;-----------------------------------------------------------------------------------
-(defun alloc-var-data-by-type (sqlda index type initial-elt)
+(defun get-var-sqlln (xsqlda* index)
+  (cffi:foreign-slot-value 
+   (cffi:mem-aref 
+    (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
+    'xsqlvar index) 'xsqlvar 'sqllen))
+;-----------------------------------------------------------------------------------
+(defun alloc-var-data-by-type (sqlda index type initial-elt &key (count 1))
   (setf (cffi:foreign-slot-value 
 	 (cffi:mem-aref 
 	  (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
 	  'xsqlvar index) 'xsqlvar 'sqldata) 
-	(cffi:foreign-alloc type :initial-element initial-elt)))
+	(cffi:foreign-alloc type :initial-element initial-elt :count count)))
 ;-----------------------------------------------------------------------------------
 (defun alloc-var-data-text (sqlda index)
-  (setf (cffi:foreign-slot-value 
-	 (cffi:mem-aref 
-	  (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-	  'xsqlvar index) 'xsqlvar 'sqldata) 
-	(cffi:foreign-alloc :char :initial-element 0 
-			    :count (+ (cffi:foreign-slot-value 
-				    (cffi:mem-aref 
-				     (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-				     'xsqlvar index) 'xsqlvar 'sqllen) 1)))) 
+  (alloc-var-data-by-type sqlda index :char 0 
+			  :count (+ 1 (get-var-sqlln sqlda index))))
 ;-----------------------------------------------------------------------------------
 (defun alloc-var-data-varying (sqlda index)
-  (setf (cffi:foreign-slot-value 
-	 (cffi:mem-aref 
-	  (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-	  'xsqlvar index) 'xsqlvar 'sqldata) 
-	(cffi:foreign-alloc :char :initial-element 0 
-			    :count (+ (cffi:foreign-slot-value 
-				    (cffi:mem-aref 
-				     (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-				     'xsqlvar index) 'xsqlvar 'sqllen) 3)))) 
+  (alloc-var-data-by-type sqlda index :char 0 
+			  :count (+ 3 (get-var-sqlln sqlda index))))
 ;-----------------------------------------------------------------------------------
 
 (defun alloc-vars-data (sqlda)
@@ -264,12 +256,7 @@
 		   'xsqlvar i) 'xsqlvar 'sqlind) 
 		 (cffi:foreign-alloc :short)))
 	 (cond ((eq tp ':text) (alloc-var-data-text sqlda i))
-	       ((eq tp ':varying) ;(progn
-				  ;  (setf (cffi:foreign-slot-value 
-				;	   (cffi:mem-aref 
-				;	    (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 'xsqlvar i) 
-				;	   'xsqlvar 'sqltype) 452)
-				    (alloc-var-data-text sqlda i));)
+	       ((eq tp ':varying) (alloc-var-data-varying sqlda i))
 	       ((eq tp ':float) (alloc-var-data-by-type sqlda i tp 0.0))
 	   (T (alloc-var-data-by-type sqlda i tp 0))))))
 ;-----------------------------------------------------------------------------------
@@ -292,21 +279,24 @@
   (cond 
     ((eq type ':text)
      (cffi:foreign-string-to-lisp (cffi:foreign-slot-value (cffi:mem-aref 
-									     (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-									     'xsqlvar index) 
-									    'xsqlvar 'sqldata) ))
+							    (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
+							    'xsqlvar index) 
+							   'xsqlvar 'sqldata) ))
 						   ;; :count (cffi:foreign-slot-value 
 						   ;; 	   (cffi:mem-aref 
 						   ;; 	    (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
 						   ;; 	    'xsqlvar index) 'xsqlvar 'sqllen)))
-    ((eq type ':varying) (cffi:foreign-string-to-lisp  (inc-pointer (cffi:foreign-slot-value (cffi:mem-aref 
-									     (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-									     'xsqlvar index) 
-									    'xsqlvar 'sqldata) 2)
-						        :count (mem-aref (cffi:foreign-slot-value (cffi:mem-aref 
-									     (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-									     'xsqlvar index) 
-									    'xsqlvar 'sqldata) :short)))
+    ((eq type ':varying) 
+     (cffi:foreign-string-to-lisp  (inc-pointer 
+				    (cffi:foreign-slot-value (cffi:mem-aref 
+							      (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
+							      'xsqlvar index) 
+							     'xsqlvar 'sqldata) 2)
+				   :count (mem-aref 
+					   (cffi:foreign-slot-value (cffi:mem-aref 
+								     (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
+								     'xsqlvar index) 
+								    'xsqlvar 'sqldata) :short)))
 
     (T (cffi:mem-aref 
 	(cffi:foreign-slot-value (cffi:mem-aref 
@@ -314,17 +304,21 @@
 				    'xsqlvar index) 
 				 'xsqlvar 'sqldata) type))))
 ;-----------------------------------------------------------------------------------
-(defun get-var-val (xsqlda* index)
-  (block gvv
-    (multiple-value-bind (tp can-nil) (get-var-type xsqlda* index)
-      (when can-nil
-	(when (= -1 (cffi:mem-aref (cffi:foreign-slot-value 
+(defun is-var-nil (xsqlda* index)
+  (if (nth-value 1 (get-var-type xsqlda* index))
+      (if (= -1 (cffi:mem-aref (cffi:foreign-slot-value 
 				    (cffi:mem-aref 
 				     (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
 				     'xsqlvar index) 'xsqlvar 'sqlind)
 				   :short))
-	  (return-from gvv nil)))
-      (get-var-val-by-type xsqlda* index tp))))
+	  T
+	  Nil)
+      Nil))
+;-----------------------------------------------------------------------------------
+(defun get-var-val (xsqlda* index)
+   (if (is-var-nil xsqlda* index) 
+       nil
+       (get-var-val-by-type xsqlda* index (nth-value 0 (get-var-type xsqlda* index)))))
 ;-----------------------------------------------------------------------------------
 (defun get-vars-count (xsqlda*)
   (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqld))
@@ -349,8 +343,7 @@
 	     :initform "masterkey")))
 ;-----------------------------------------------------------------------------------
 (defgeneric fb-connect (fb-db) 
-  ;:documentation "connecting to fb DB"
-)
+  (:documentation "connecting to fb DB"))
 (defmethod fb-connect ((fb-db fb-database))
   (let ((host+path (concatenate 'string (host fb-db) ":" (path fb-db)))
 	(status-vector* (make-status-vector)))
@@ -362,7 +355,8 @@
   (progn (setf (db-handle* db) (make-db-handler))
 	 (when (null no-auto-connect) (fb-connect db))))
 ;-----------------------------------------------------------------------------------
-(defgeneric fb-disconnect (db))
+(defgeneric fb-disconnect (db)
+  (:documentation "disconnecting from DB"))
 (defmethod fb-disconnect ((db fb-database))
   (let ((status-vector* (make-status-vector)))
     (isc-detach-database status-vector* (db-handle* db))
@@ -421,11 +415,6 @@
 (defgeneric fb-prepare-and-execute-statement (statement))
 (defmethod fb-prepare-and-execute-statement ((fb-stmt fb-statement))
    (let ((status-vector* (make-status-vector)))
-     ;(setf (xsqlda-output* fb-stmt)(sql-easy-prepare-and-execute (db-handle* (fb-db (fb-tr fb-stmt)))
-;				(transaction-handle* (fb-tr fb-stmt))
-;				(statement-handle* fb-stmt)
-;				status-vector*
-;				(request-str fb-stmt)))
      (isc-dsql-allocate-statement status-vector*
 				 (db-handle* (fb-db (fb-tr fb-stmt)))
 				 (statement-handle* fb-stmt))
@@ -453,8 +442,6 @@
        (isc-dsql-set-cursor-name status-vector* 
 				 (statement-handle* fb-stmt)
 				 (cffi:foreign-string-alloc "dyn_cursor") 0))
-       
-   
      ;...
      ;TODO: process errors
      (cffi-sys:foreign-free status-vector*)))
