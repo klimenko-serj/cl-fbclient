@@ -7,5 +7,7 @@
   :license ""
   :depends-on (#:cffi)
   :components ((:file "package")
+	       (:file "cl-fbclient-cffi")
+	       (:file "cl-fbclient-functions")
                (:file "cl-fbclient")))
 
