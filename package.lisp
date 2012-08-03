@@ -23,5 +23,12 @@
 	   :fb-loop-query-fetch
 	   :fb-noresult-query
 	   :fb-query-fetch-all
+	   :fb-error-code
+	   :fb-error-text
+	   :fbclient-msg
+	   ;:fbclient-dsql-msg
+	   :fb-error
+	   ;:fb-dsql-error
+	   :fb-verbalize-error
 	   ))
 

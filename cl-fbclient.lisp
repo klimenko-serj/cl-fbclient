@@ -8,7 +8,7 @@
 (cffi:define-foreign-library
 	     fbclient
   (:unix (:or "libfbclient.so.2" "libfbclient.so"))
-  (t (:default "libfbclient.so")))
+  (t (:default "libfbclient")))
 
 (cffi:use-foreign-library fbclient)
 ;===================================================================================
@@ -59,6 +59,14 @@
 (cffi:defcfun "isc_interprete" :long 
   (isc_msg :pointer)
   (isc_status_vect :pointer))
+;-----------------------------------------------------------------------------------
+(cffi:defcfun "isc_sqlcode" :short 
+  (isc_status_vect :pointer))
+;-----------------------------------------------------------------------------------
+(cffi:defcfun "isc_sql_interprete" :long 
+  (isc_sql_code :short)
+  (isc_msg :pointer)
+  (isc_msg_size :short))
 ;-----------------------------------------------------------------------------------
 (cffi:defcfun "isc_start_transaction" :long
   (isc_status_vect :pointer)
@@ -195,7 +203,7 @@
 	(let ((new-xsqlda (make-xsqlda 
 			   (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqld))))
 	  (cffi-sys:foreign-free tmp-xsqlda)
-	  (format t "XSQLDA updated")
+	  ;(format t "XSQLDA updated")
 	  new-xsqlda))
 	(T tmp-xsqlda)))
 ;-----------------------------------------------------------------------------------
@@ -328,6 +336,54 @@
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 ;-----------------------------------------------------------------------------------
+(define-condition fb-error (error)
+  ((fb-error-code :initarg :fb-error-code :reader fb-error-code)
+   (fb-error-text :initarg :fb-error-text :reader fb-error-text)
+   (fbclient-msg :initarg :fbclient-msg :reader fbclient-msg)))
+;-----------------------------------------------------------------------------------
+(defgeneric fb-verbalize-error (err))
+(defmethod fb-verbalize-error ((err fb-error))
+  (format nil "!fb-error:~%~tcode: ~a~%~ttext: ~a~%~tfbclient-msg: ~a" 
+	  (cl-fbclient:fb-error-code err)
+	  (cl-fbclient:fb-error-text err)
+	  (cl-fbclient:fbclient-msg err)))
+;-----------------------------------------------------------------------------------
+;; (define-condition fb-dsql-error (fb-error)
+;;   ((fbclient-dsql-msg :initarg :fbclient-dsql-msg :reader fbclient-dsql-msg)))
+;; ;-----------------------------------------------------------------------------------
+;; (defmethod fb-verbalize-error ((err fb-dsql-error))
+;;   (format nil "!fb-error:~%~tcode: ~a~%~ttext: ~a~%~tfbclient-msg: ~a~%~tfbclient-dsql-msg: ~a" 
+;; 	  (cl-fbclient:fb-error-code err)
+;; 	  (cl-fbclient:fb-error-text err)
+;; 	  (cl-fbclient:fbclient-msg err)
+;; 	  (fbclient-dsql-msg err)))
+;-----------------------------------------------------------------------------------
+(defun status-vector-error-p (status-vector*)
+  (and (= (cffi:mem-aref status-vector* :long 0) 1)
+       (/= (cffi:mem-aref status-vector* :long 1) 0)))
+;-----------------------------------------------------------------------------------
+(defun get-status-vector-sql-msg (status-vector*)
+  (let ((msg* (cffi:foreign-alloc :char :initial-element 0 :count 1024))
+	(sql-code (isc-sqlcode status-vector*)))
+    (unwind-protect 
+	 (if (/= sql-code -999) (progn
+				  (isc-sql-interprete sql-code msg* 1024)
+				  (format nil "~%(DSQL code: ~a): ~a" sql-code (cffi:foreign-string-to-lisp msg*)))
+	     "")
+      (cffi-sys:foreign-free msg*))))
+;-----------------------------------------------------------------------------------
+(defun get-status-vector-msg (status-vector*)
+  (let ((msg* (cffi:foreign-alloc :char :initial-element 0 :count 512))
+	(sv** (cffi:foreign-alloc :pointer :initial-element status-vector*)))
+    (let ((sz (isc-interprete msg* sv**)))
+    (unwind-protect 
+	 (format nil "~a~a"
+		 (cffi:foreign-string-to-lisp msg*) 
+		 (get-status-vector-sql-msg status-vector*))
+      (cffi-sys:foreign-free msg*)))))
+;-----------------------------------------------------------------------------------
+;===================================================================================
+;-----------------------------------------------------------------------------------
 (defclass fb-database ()
   ((db-handle* :accessor db-handle*)
    (host :accessor host
@@ -348,8 +404,13 @@
   (let ((host+path (concatenate 'string (host fb-db) ":" (path fb-db)))
 	(status-vector* (make-status-vector)))
     (connect-to-db (db-handle* fb-db) status-vector* host+path (user-name fb-db) (password fb-db))
-    ;TODO: parse errors
-    (cffi-sys:foreign-free status-vector*)))
+    (unwind-protect 
+	 (when (status-vector-error-p status-vector*)
+	   (error 'fb-error 
+		  :fb-error-code 10 
+		  :fb-error-text (format nil "Unable to connect ('~a')" host+path)
+		  :fbclient-msg (get-status-vector-msg status-vector*)))
+    (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((db fb-database) &key (no-auto-connect Nil))
   (progn (setf (db-handle* db) (make-db-handler))
@@ -360,9 +421,13 @@
 (defmethod fb-disconnect ((db fb-database))
   (let ((status-vector* (make-status-vector)))
     (isc-detach-database status-vector* (db-handle* db))
-    ;...
-    ;TODO: process errors
-    (cffi-sys:foreign-free status-vector*)))
+    (unwind-protect 
+	 (when (status-vector-error-p status-vector*)
+	   (error 'fb-error 
+		  :fb-error-code 11 
+		  :fb-error-text "Error when disconnecting from DB"
+		  :fbclient-msg (get-status-vector-msg status-vector*)))
+    (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
 ;-----------------------------------------------------------------------------------
 (defclass fb-transaction ()
@@ -374,9 +439,13 @@
 (defmethod fb-start-transaction ((tr fb-transaction))
   (let ((status-vector* (make-status-vector)))
     (start-transaction (db-handle* (fb-db tr)) (transaction-handle* tr) status-vector*)
-    ;...
-    ;TODO: process errors
-    (cffi-sys:foreign-free status-vector*)))
+    (unwind-protect 
+	 (when (status-vector-error-p status-vector*)
+	   (error 'fb-error 
+		  :fb-error-code 20
+		  :fb-error-text "Unable to start transaction"
+		  :fbclient-msg (get-status-vector-msg status-vector*)))
+      (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((tr fb-transaction) &key (no-auto-start Nil))
   (progn (setf (transaction-handle* tr) (make-tr-handler))
@@ -386,17 +455,25 @@
 (defmethod fb-commit-transaction ((tr fb-transaction))
   (let ((status-vector* (make-status-vector)))
     (isc-commit-transaction status-vector* (transaction-handle* tr))
-    ;...
-    ;TODO: process errors
-    (cffi-sys:foreign-free status-vector*)))
+    (unwind-protect 
+	 (when (status-vector-error-p status-vector*)
+	   (error 'fb-error 
+		  :fb-error-code 21 
+		  :fb-error-text "Unable to commit transaction"
+		  :fbclient-msg (get-status-vector-msg status-vector*)))
+    (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
 (defgeneric fb-rollback-transaction (transaction))
 (defmethod fb-rollback-transaction ((tr fb-transaction))
   (let ((status-vector* (make-status-vector)))
     (isc-rollback-transaction status-vector* (transaction-handle* tr))
-    ;...
-    ;TODO: process errors
-    (cffi-sys:foreign-free status-vector*)))
+    (unwind-protect 
+	 (when (status-vector-error-p status-vector*)
+	   (error 'fb-error 
+		  :fb-error-code 22
+		  :fb-error-text "Unable to rollback transaction"
+		  :fbclient-msg (get-status-vector-msg status-vector*)))
+      (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
 ;-----------------------------------------------------------------------------------
 (defclass fb-statement ()
@@ -418,6 +495,14 @@
      (isc-dsql-allocate-statement status-vector*
 				 (db-handle* (fb-db (fb-tr fb-stmt)))
 				 (statement-handle* fb-stmt))
+     
+     (when (status-vector-error-p status-vector*)
+       (unwind-protect
+	    (error 'fb-error 
+		   :fb-error-code 30 
+		   :fb-error-text "Unable to allocate statement"
+		   :fbclient-msg (get-status-vector-msg status-vector*))
+	 (cffi-sys:foreign-free status-vector*)))
      (isc-dsql-prepare status-vector*
 		      (transaction-handle* (fb-tr fb-stmt))
 		      (statement-handle* fb-stmt)
@@ -425,12 +510,27 @@
 		      (cffi:foreign-string-alloc (request-str fb-stmt)) 
 		      1 
 		      (cffi-sys:make-pointer 0))
+     (when (status-vector-error-p status-vector*)
+       (unwind-protect
+	    (error 'fb-error 
+		   :fb-error-code 31 
+		   :fb-error-text (format nil "Unable to prepare statement: ~a"
+					  (request-str fb-stmt))
+		   :fbclient-msg (get-status-vector-msg status-vector*))
+	 (cffi-sys:foreign-free status-vector*)))
      (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
      (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
      (isc-dsql-describe status-vector* 
 			(statement-handle* fb-stmt)
 			1 
 			(xsqlda-output* fb-stmt))
+     (when (status-vector-error-p status-vector*)
+       (unwind-protect
+	    (error 'fb-error 
+		   :fb-error-code 32 
+		   :fb-error-text "Error in isc-dsql-describe"
+		   :fbclient-msg (get-status-vector-msg status-vector*))
+	 (cffi-sys:foreign-free status-vector*)))
      (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
      (alloc-vars-data (xsqlda-output* fb-stmt))
      (isc-dsql-execute status-vector*
@@ -438,12 +538,24 @@
 		       (statement-handle* fb-stmt)
 		       1 
 		       (cffi:make-pointer 0))
+     (when (status-vector-error-p status-vector*)
+       (unwind-protect
+	    (error 'fb-error 
+		   :fb-error-code 33 
+		   :fb-error-text "Unable to execute statement"
+		   :fbclient-msg (get-status-vector-msg status-vector*))
+	 (cffi-sys:foreign-free status-vector*)))
      (when (eq (fb-get-sql-type fb-stmt) 'select)
        (isc-dsql-set-cursor-name status-vector* 
 				 (statement-handle* fb-stmt)
-				 (cffi:foreign-string-alloc "dyn_cursor") 0))
-     ;...
-     ;TODO: process errors
+				 (cffi:foreign-string-alloc "dyn_cursor") 0)
+       (when (status-vector-error-p status-vector*)
+	 (unwind-protect
+	      (error 'fb-error 
+		     :fb-error-code 34 
+		     :fb-error-text "Unable to make cursor"
+		     :fbclient-msg (get-status-vector-msg status-vector*))
+	   (cffi-sys:foreign-free status-vector*))))
      (cffi-sys:foreign-free status-vector*)))
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((stmt fb-statement) &key (no-auto-prepare-and-execute Nil))
@@ -453,20 +565,31 @@
 (defmethod fb-statement-free ((stmt fb-statement))
   (let ((status-vector* (make-status-vector)))
     (isc-dsql-free-statement status-vector* (statement-handle* stmt) 1)
-    ;...
-    ;TODO: process errors
-    (cffi-sys:foreign-free status-vector*)))
+    (unwind-protect
+	 (when (status-vector-error-p status-vector*)
+	   (error 'fb-error 
+		  :fb-error-code 35 
+		  :fb-error-text "Unable to free statement"
+		  :fbclient-msg (get-status-vector-msg status-vector*)))
+      (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
 (defgeneric fb-statement-fetch (statement))
 (defmethod fb-statement-fetch ((stmt fb-statement))
   (if (eq (fb-get-sql-type stmt) 'select)
       (let ((status-vector* (make-status-vector)))
 	(let ((fetch-res (isc-dsql-fetch status-vector* (statement-handle* stmt) 1 (xsqlda-output* stmt))))
-					;...
-					;TODO: process errors
-	  (cffi-sys:foreign-free status-vector*)
+	  (unwind-protect
+	       (when (status-vector-error-p status-vector*)
+		 (error 'fb-error 
+			:fb-error-code 36 
+			:fb-error-text "Unable to fetch statement"
+			:fbclient-msg (get-status-vector-msg status-vector*)))
+	    (cffi-sys:foreign-free status-vector*))
 	  (when(= fetch-res 0) T)))
-      (format t "SQL-type is not SELECT")))
+      (error 'fb-error 
+		  :fb-error-code 36 
+		  :fb-error-text "Unable to fetch statement. Statement type is not SELECT."
+		  :fbclient-msg "")))
 ;-----------------------------------------------------------------------------------
 (defgeneric fb-statement-get-var-val (statement index))
 (defmethod fb-statement-get-var-val ((stmt fb-statement) index)
