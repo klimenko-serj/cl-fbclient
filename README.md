@@ -9,6 +9,12 @@ Basic classes:
 - fb-statement
 - fb-error
 
+Supported SQL-vars types:
+- float
+- double
+- integer
+- varchar
+
 -----------
 **Example:**
 <pre>
@@ -32,3 +38,9 @@ Basic classes:
 
 Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-fbclient/wiki**</a>
 ---------------         
+
+TODO:
+---------------
+- Create a support types: date, time, timestamp
+- finalize documentation
+- .
