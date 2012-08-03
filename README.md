@@ -30,5 +30,6 @@ Basic classes:
 (cl-fbclient:fb-disconnect *db*)
 </pre>
 
+Documentation: github.com/klimenko-serj/cl-fbclient/wiki
 
              
