@@ -20,6 +20,8 @@
 (defgeneric fb-noresult-query (fb-db request-str))
 (defgeneric fb-query-fetch-all (fb-db request-str))
 ;===================================================================================
+;; FB-ERROR
+;-----------------------------------------------------------------------------------
 (define-condition fb-error (error)
   ((fb-error-code :initarg :fb-error-code :reader fb-error-code)
    (fb-error-text :initarg :fb-error-text :reader fb-error-text)
@@ -31,6 +33,8 @@
 	  (cl-fbclient:fb-error-text err)
 	  (cl-fbclient:fbclient-msg err)))
 ;===================================================================================
+;; FB-DATABASE
+;-----------------------------------------------------------------------------------
 (defclass fb-database ()
   ((db-handle* :accessor db-handle*)
    (host :accessor host
@@ -72,6 +76,7 @@
 		  :fbclient-msg (get-status-vector-msg status-vector*)))
     (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
+;; FB-TRANSACTION
 ;-----------------------------------------------------------------------------------
 (defclass fb-transaction ()
   ((fb-db :accessor fb-db
@@ -115,6 +120,7 @@
 		  :fbclient-msg (get-status-vector-msg status-vector*)))
       (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
+;; FB-STATEMENT
 ;-----------------------------------------------------------------------------------
 (defclass fb-statement ()
   ((fb-tr :accessor fb-tr
@@ -235,6 +241,8 @@
   (get-vars-vals-list (xsqlda-output* stmt)))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
+;; 'FB-WIDTH-..' and 'FB-LOOP-..' macroses
+;-----------------------------------------------------------------------------------
 (defmacro fb-with-transaction ((fb-db transaction-name) &rest body)
   `(let ((,transaction-name (make-instance 'fb-transaction :fb-db ,fb-db)))
      (unwind-protect 
@@ -271,6 +279,10 @@
 	      (progn ,@body)))))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
+;; QUERY functions 
+;; (automatic 'start' and 'commit' transaction)
+;; (automatic 'allocate' and 'free' statement)
+;-----------------------------------------------------------------------------------
 (defmethod fb-noresult-query ((fb-db fb-database) request-str)
   (fb-with-statement-db (fb-db st-tmp-name request-str) nil))
 ;-----------------------------------------------------------------------------------
