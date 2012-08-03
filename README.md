@@ -30,6 +30,6 @@ Basic classes:
 (cl-fbclient:fb-disconnect *db*)
 </pre>
 
-Documentation: <a href="github.com/klimenko-serj/cl-fbclient/wiki">**cl-fbclient/wiki**</a>
-
+Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-fbclient/wiki**</a>
+  <a href="../../wiki">**cl-fbclient/wiki**</a>
              
