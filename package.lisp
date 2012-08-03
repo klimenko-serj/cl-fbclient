@@ -26,9 +26,7 @@
 	   :fb-error-code
 	   :fb-error-text
 	   :fbclient-msg
-	   ;:fbclient-dsql-msg
 	   :fb-error
-	   ;:fb-dsql-error
 	   :fb-verbalize-error
 	   ))
 
