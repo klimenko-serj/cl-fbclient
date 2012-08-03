@@ -10,7 +10,7 @@ Basic classes:
 - fb-error
 
 -----------
-Example:
+**Example:**
 <pre>
 (require 'cl-fbclient)
 
@@ -19,11 +19,11 @@ Example:
   				   :path "/path-to-db/db-file.fdb"))
              
 ;;query that returns no value
-;;(transaction will be created started and commited automatically)
+;;(transaction will be created, started and commited automatically)
 (cl-fbclient:fb-noresult-query *db* "INSERT INTO T1(A1,A2) VALUES(121, 42)")
 
 ;;to query and write results to the list
-;;(transaction will be created started and commited automatically)
+;;(transaction will be created, started and commited automatically)
 (cl-fbclient:fb-query-fetch-all *db* "SELECT * FROM t1")
 </pre>
 
