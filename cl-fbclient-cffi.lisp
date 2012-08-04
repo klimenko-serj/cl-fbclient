@@ -14,6 +14,8 @@
 (cffi:defctype isc_status :long)
 (cffi:defctype isc_tr_handle :unsigned-int)
 (cffi:defctype isc_stmt_handle :unsigned-int)
+(cffi:defctype isc_date :int)
+(cffi:defctype isc_time :unsigned-int)
 ;===================================================================================
 (cffi:defcstruct XSQLVAR 
   (sqltype :short)
@@ -38,6 +40,23 @@
   (sqln :short)
   (sqld :short)
   (sqlvar XSQLVAR :count 1))
+;-----------------------------------------------------------------------------------
+(cffi:defcstruct isc_timestamp 
+  (timestamp_date isc_date)
+  (timestamp_time isc_time))
+;-----------------------------------------------------------------------------------
+(defcstruct tm
+  (sec :int)
+  (min :int)
+  (hour :int)
+  (mday :int)
+  (mon  :int)
+  (year :int)
+  (wday :int)
+  (yday :int)
+  (isdst  :boolean)
+  (zone   :string)
+  (gmtoff :long))
 ;===================================================================================
 (cffi:defcfun "isc_attach_database" :long 
   (isc_status_vect :pointer)
@@ -133,5 +152,9 @@
   (isc_status_vect :pointer)
   (isc_stmt_h :pointer)
   (isc_code_one :unsigned-short))
+;-----------------------------------------------------------------------------------
+(cffi:defcfun "isc_decode_timestamp" :void
+  (_timestamp :pointer)
+  (_struct_tm :pointer))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================

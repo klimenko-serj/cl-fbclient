@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:cl-fbclient
-  (:use #:cl #:cffi)
+  (:use #:cl #:cffi #:local-time)
   (:export :fb-database
 	   :fb-transaction
 	   :fb-statement
