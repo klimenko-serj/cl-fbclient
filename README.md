@@ -14,6 +14,7 @@ Supported SQL-vars types:
 - double
 - integer
 - varchar
+- timestamp
 
 -----------
 **Example:**
