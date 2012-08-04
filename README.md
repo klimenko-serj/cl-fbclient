@@ -41,6 +41,6 @@ Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-f
 
 TODO:
 ---------------
-- Create a support types: date, time, timestamp
+- Create a support types: date, time, array
 - finalize documentation
 - .
