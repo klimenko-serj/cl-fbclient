@@ -7,7 +7,7 @@
 (cffi:define-foreign-library
 	     fbclient
   (:unix (:or "libfbclient.so.2" "libfbclient.so"))
-  (t (:default "libfbclient")))
+  (t (:default "fbclient"))) ;;Windows support
 (cffi:use-foreign-library fbclient)
 ;===================================================================================
 (cffi:defctype isc_db_handle :unsigned-int)
