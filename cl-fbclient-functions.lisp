@@ -102,15 +102,13 @@
     'xsqlvar index) 'xsqlvar 'sqllen))
 ;-----------------------------------------------------------------------------------
 (defun alloc-var-data-default (xsqlda* index)
-(progn
-  (format t "index: ~a ;ln: ~a~%" index (get-var-sqlln xsqlda* index))
   (setf (cffi:foreign-slot-value 
 	 (cffi:mem-aref 
 	  (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
 	  'xsqlvar index) 'xsqlvar 'sqldata) 
 	(cffi:foreign-alloc :char 
 			    :initial-element 0 
-			    :count (get-var-sqlln xsqlda* index)))))
+			    :count (get-var-sqlln xsqlda* index))))
 ;-----------------------------------------------------------------------------------
 (defun alloc-vars-data (sqlda)
   (loop for i from 0 to (- (cffi:foreign-slot-value sqlda 'xsqlda 'sqld) 1) do
