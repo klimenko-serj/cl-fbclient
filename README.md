@@ -2,7 +2,7 @@ cl-fbclient
 ===========
 Common Lisp library for working with firebird databases
 -----------
-Library is a set of classes and methods for working with firebirfd databases.
+Library is a set of classes and methods for working with firebird databases.
 Basic classes:
 - fb-database
 - fb-transaction
@@ -37,11 +37,17 @@ Supported SQL-vars types:
 (cl-fbclient:fb-disconnect *db*)
 </pre>
 
+**Tested on:**
+  - SBCL(ubuntu)
+  - SBCL-win32-threads (by akovalenko). (WindowsXP SP3)
+
 Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-fbclient/wiki**</a>
 ---------------         
 
 TODO:
 ---------------
-- Create a support types: date, time, array
+- Create support types: date, time, array
 - finalize documentation
-- .
+- Add methods to get **Named** Lists of fetched vals like (:name-1 val-1 :name-2 val-2 ...
+- ...
+
