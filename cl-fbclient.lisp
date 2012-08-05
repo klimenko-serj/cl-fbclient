@@ -36,7 +36,6 @@
 ;; FB-DATABASE
 ;-----------------------------------------------------------------------------------
 (defclass fb-database ()
- :documentation "class that handles database connection"
   ((db-handle* :accessor db-handle*)
    (host :accessor host
 	 :initarg :host
