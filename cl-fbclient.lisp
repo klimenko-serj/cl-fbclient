@@ -258,21 +258,21 @@
 ;===================================================================================
 ;; 'FB-WIDTH-..' and 'FB-LOOP-..' macroses
 ;-----------------------------------------------------------------------------------
-(defmacro fb-with-transaction ((fb-db transaction-name) &rest body)
+(defmacro fb-with-transaction ((fb-db transaction-name) &body body)
   "Macro to create, automatic start and commit transactions."
   `(let ((,transaction-name (make-instance 'fb-transaction :fb-db ,fb-db)))
      (unwind-protect 
 	 (progn ,@body)
      (fb-commit-transaction ,transaction-name))))
 ;-----------------------------------------------------------------------------------
-(defmacro fb-with-statement ((fb-tr statement-name request-str) &rest body)
+(defmacro fb-with-statement ((fb-tr statement-name request-str) &body body)
   "Macro to create, automatic allocate and free statements."
   `(let ((,statement-name (make-instance 'fb-statement :fb-tr ,fb-tr :request-str ,request-str)))
      (unwind-protect 
 	 (progn ,@body)
      (fb-statement-free ,statement-name))))
 ;-----------------------------------------------------------------------------------
-(defmacro fb-with-statement-db ((fb-db statement-name request-str) &rest body)
+(defmacro fb-with-statement-db ((fb-db statement-name request-str) &body body)
   "Macro to create, automatic allocate and free statements. 
    (transaction will be created, started and commited automatically)"
   (let ((tr-name (gensym)))
@@ -285,7 +285,7 @@
   `(loop while (fb-statement-fetch ,fb-stmt) 
       do (progn ,@body)))
 ;-----------------------------------------------------------------------------------
-(defmacro fb-loop-query-fetch ((fb-db request-str varlist) &rest body)
+(defmacro fb-loop-query-fetch ((fb-db request-str varlist) &body body)
   "Macro to loop reading and processing the query results by DB.
    (transaction will be created, started and commited automatically)"
   (let ((tr-name (gensym))
