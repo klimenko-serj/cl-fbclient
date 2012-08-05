@@ -37,7 +37,7 @@
   ((fb-error-code :initarg :fb-error-code :reader fb-error-code)
    (fb-error-text :initarg :fb-error-text :reader fb-error-text)
    (fbclient-msg :initarg :fbclient-msg :reader fbclient-msg))
-(:documentation "Condition for processing fbclient errors."))
+  (:documentation "Condition for processing fbclient errors."))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-verbalize-error ((err fb-error))
   (format nil "!fb-error:~%~tcode: ~a~%~ttext: ~a~%~tfbclient-msg: ~a" 
@@ -60,7 +60,7 @@
    (password :accessor password
 	     :initarg :password
 	     :initform "masterkey"))
-  (:documetation "Class that handles database connection"))
+  (:documentation "Class that handles database connection"))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-connect ((fb-db fb-database))
   (let ((host+path (concatenate 'string (host fb-db) ":" (path fb-db)))
@@ -95,7 +95,7 @@
   ((fb-db :accessor fb-db
 	  :initarg :fb-db)
    (transaction-handle* :accessor transaction-handle*))
-  (:documetation "Class that handles transaction."))
+  (:documentation "Class that handles transaction."))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-start-transaction ((tr fb-transaction))
   (let ((status-vector* (make-status-vector)))
