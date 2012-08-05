@@ -39,7 +39,8 @@ Supported SQL-vars types:
 
 **Tested on:**
   - SBCL(ubuntu)
-  - SBCL-win32-threads (by akovalenko). (WindowsXP SP3)
+  - CLISP(ubuntu)
+  - SBCL-win32-threads (by akovalenko). (WindowsXP)
 
 Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-fbclient/wiki**</a>
 ---------------         
@@ -47,7 +48,7 @@ Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-f
 TODO:
 ---------------
 - Create support types: date, time, array
-- finalize documentation
+- Add docstrings
 - Add methods to get **Named** Lists of fetched vals like (:name-1 val-1 :name-2 val-2 ...
 - ...
 
