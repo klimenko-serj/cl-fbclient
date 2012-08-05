@@ -280,7 +280,7 @@
 			 (fb-with-statement (,tr-name ,statement-name ,request-str)
 					    ,@body))))
 ;-----------------------------------------------------------------------------------
-(defmacro fb-loop-statement-fetch ((fb-stmt) &rest body)
+(defmacro fb-loop-statement-fetch ((fb-stmt) &body body)
   "Macro to loop reading and processing the query results"
   `(loop while (fb-statement-fetch ,fb-stmt) 
       do (progn ,@body)))
