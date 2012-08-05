@@ -4,7 +4,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:cl-fbclient)
 ;===================================================================================
-(defgeneric fb-verbalize-error (err))
+(defgeneric fb-verbalize-error (err)
+  (:documentation "The method, which creates a single text error message."))
 (defgeneric fb-connect (fb-db) 
   (:documentation "Method to connect to the database."))
 (defgeneric fb-disconnect (db)
@@ -35,7 +36,8 @@
 (define-condition fb-error (error)
   ((fb-error-code :initarg :fb-error-code :reader fb-error-code)
    (fb-error-text :initarg :fb-error-text :reader fb-error-text)
-   (fbclient-msg :initarg :fbclient-msg :reader fbclient-msg)))
+   (fbclient-msg :initarg :fbclient-msg :reader fbclient-msg))
+(:documentation "Condition for processing fbclient errors."))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-verbalize-error ((err fb-error))
   (format nil "!fb-error:~%~tcode: ~a~%~ttext: ~a~%~tfbclient-msg: ~a" 
@@ -57,7 +59,8 @@
 	      :initform "SYSDBA")
    (password :accessor password
 	     :initarg :password
-	     :initform "masterkey")))
+	     :initform "masterkey"))
+  (:documetation "Class that handles database connection"))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-connect ((fb-db fb-database))
   (let ((host+path (concatenate 'string (host fb-db) ":" (path fb-db)))
@@ -91,7 +94,8 @@
 (defclass fb-transaction ()
   ((fb-db :accessor fb-db
 	  :initarg :fb-db)
-   (transaction-handle* :accessor transaction-handle*)))
+   (transaction-handle* :accessor transaction-handle*))
+  (:documetation "Class that handles transaction."))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-start-transaction ((tr fb-transaction))
   (let ((status-vector* (make-status-vector)))
@@ -143,7 +147,8 @@
 		   :initform nil)
    (st-type :writer (setf st-type)
 	    :reader fb-get-sql-type
-	 :initform Nil)))
+	 :initform Nil))
+  (:documentation "Class that handles SQL statements."))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-prepare-and-execute-statement ((fb-stmt fb-statement))
    (let ((status-vector* (make-status-vector)))
@@ -254,28 +259,35 @@
 ;; 'FB-WIDTH-..' and 'FB-LOOP-..' macroses
 ;-----------------------------------------------------------------------------------
 (defmacro fb-with-transaction ((fb-db transaction-name) &rest body)
+  "Macro to create, automatic start and commit transactions."
   `(let ((,transaction-name (make-instance 'fb-transaction :fb-db ,fb-db)))
      (unwind-protect 
 	 (progn ,@body)
      (fb-commit-transaction ,transaction-name))))
 ;-----------------------------------------------------------------------------------
 (defmacro fb-with-statement ((fb-tr statement-name request-str) &rest body)
+  "Macro to create, automatic allocate and free statements."
   `(let ((,statement-name (make-instance 'fb-statement :fb-tr ,fb-tr :request-str ,request-str)))
      (unwind-protect 
 	 (progn ,@body)
      (fb-statement-free ,statement-name))))
 ;-----------------------------------------------------------------------------------
 (defmacro fb-with-statement-db ((fb-db statement-name request-str) &rest body)
+  "Macro to create, automatic allocate and free statements. 
+   (transaction will be created, started and commited automatically)"
   (let ((tr-name (gensym)))
    `(fb-with-transaction (,fb-db ,tr-name)
 			 (fb-with-statement (,tr-name ,statement-name ,request-str)
 					    ,@body))))
 ;-----------------------------------------------------------------------------------
 (defmacro fb-loop-statement-fetch ((fb-stmt) &rest body)
+  "Macro to loop reading and processing the query results"
   `(loop while (fb-statement-fetch ,fb-stmt) 
       do (progn ,@body)))
 ;-----------------------------------------------------------------------------------
 (defmacro fb-loop-query-fetch ((fb-db request-str varlist) &rest body)
+  "Macro to loop reading and processing the query results by DB.
+   (transaction will be created, started and commited automatically)"
   (let ((tr-name (gensym))
 	(st-name (gensym)))
    `(fb-with-transaction 
