@@ -205,17 +205,6 @@
 		   :fb-error-text "Unable to execute statement"
 		   :fbclient-msg (get-status-vector-msg status-vector*))
 	 (cffi-sys:foreign-free status-vector*)))
-     ;; (when (eq (fb-get-sql-type fb-stmt) 'select)
-     ;;   (isc-dsql-set-cursor-name status-vector* 
-     ;; 				 (statement-handle* fb-stmt)
-     ;; 				 (cffi:foreign-string-alloc "dyn_cursor") 0)
-     ;;   (when (status-vector-error-p status-vector*)
-     ;; 	 (unwind-protect
-     ;; 	      (error 'fb-error 
-     ;; 		     :fb-error-code 34 
-     ;; 		     :fb-error-text "Unable to make cursor"
-     ;; 		     :fbclient-msg (get-status-vector-msg status-vector*))
-     ;; 	   (cffi-sys:foreign-free status-vector*))))
      (cffi-sys:foreign-free status-vector*)))
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((stmt fb-statement) &key (no-auto-prepare-and-execute Nil))
@@ -288,17 +277,13 @@
 (defmacro fb-loop-query-fetch ((fb-db request-str varlist) &body body)
   "Macro to loop reading and processing the query results by DB.
    (transaction will be created, started and commited automatically)"
-  (let ((tr-name (gensym))
-	(st-name (gensym)))
-   `(fb-with-transaction 
-     (,fb-db ,tr-name)
-     (fb-with-statement 
-      (,tr-name ,st-name ,request-str)
+  (let ((st-name (gensym)))
+   `(fb-with-statement-db (,fb-db ,st-name ,request-str)
       (loop while (fb-statement-fetch ,st-name) 
 	 do (let ,(loop for i from 0 to (- (length varlist) 1) 
 		     collect `(,(nth i varlist) 
 				(fb-statement-get-var-val ,st-name ,i)))
-	      (progn ,@body)))))))
+	      (progn ,@body))))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 ;; QUERY functions 
