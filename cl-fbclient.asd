@@ -4,7 +4,8 @@
   :serial t
   :description "Common Lisp library for working with firebird databases(using fbclient)"
   :author "Klimenko Serj <klimenko.serj@gmail.com>"
-  :license "LGPL"
+  :license "MIT"
+  :version "0.1"
   :depends-on (#:cffi
 	       #:local-time)
   :components ((:file "package")
