@@ -13,6 +13,7 @@ Supported SQL-vars types:
 - float
 - double
 - integer
+- decimal(numeric)
 - varchar
 - timestamp
 
