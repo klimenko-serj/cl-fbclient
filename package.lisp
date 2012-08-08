@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:cl-fbclient
-  (:use #:cl #:cffi #:local-time)
+  (:use #:cl #:cffi ) ;#:local-time) "local-time don't work correctly with fbtimestamp"
   (:export :fb-database
 	   :fb-transaction
 	   :fb-statement

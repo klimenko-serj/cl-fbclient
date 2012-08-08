@@ -6,8 +6,8 @@
   :author "Klimenko Serj <klimenko.serj@gmail.com>"
   :license "MIT"
   :version "0.1"
-  :depends-on (#:cffi
-	       #:local-time)
+  :depends-on (#:cffi)
+	       ;#:local-time)
   :components ((:file "package")
 	       (:file "cl-fbclient-cffi")
 	       (:file "cl-fbclient-functions")

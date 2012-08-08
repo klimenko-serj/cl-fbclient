@@ -142,11 +142,17 @@
 			    'xsqlvar index) 
 			   'xsqlvar 'sqldata))
 ;-----------------------------------------------------------------------------------
-(defun fb-timestamp2local-time (fb-timestamp)
+;; (defun fb-timestamp2local-time (fb-timestamp)
+;;   (let ((ttm (cffi:foreign-alloc 'tm)))
+;;     (isc-decode-timestamp fb-timestamp ttm)
+;;      (with-foreign-slots ((sec min hour mday mon year) ttm tm)
+;;        (local-time:encode-timestamp 0 sec min hour mday (+ 1 mon) (+ 1900 year)))))
+;-----------------------------------------------------------------------------------
+(defun fb-timestamp2datetime-list (fb-timestamp)
   (let ((ttm (cffi:foreign-alloc 'tm)))
     (isc-decode-timestamp fb-timestamp ttm)
      (with-foreign-slots ((sec min hour mday mon year) ttm tm)
-       (local-time:encode-timestamp 0 sec min hour mday (+ 1 mon) (+ 1900 year)))))
+       (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec))))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val-by-type (xsqlda* index type)
   (cond 
@@ -157,8 +163,10 @@
 				   :count (mem-aref (xsqlda-get-var-val xsqlda* index)
 						     :short)))
     ((eq type ':timestamp)
-     (fb-timestamp2local-time (mem-aref (xsqlda-get-var-val xsqlda* index) 
+     (fb-timestamp2datetime-list (mem-aref (xsqlda-get-var-val xsqlda* index) 
 					'isc_timestamp)));TMP
+     ;; (fb-timestamp2local-time (mem-aref (xsqlda-get-var-val xsqlda* index) 
+     ;; 					'isc_timestamp)));TMP
     (T (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) type))))
 ;-----------------------------------------------------------------------------------
 (defun is-var-nil (xsqlda* index)
