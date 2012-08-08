@@ -4,6 +4,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package #:cl-fbclient)
 ;===================================================================================
+;; GENERICS
+;-----------------------------------------------------------------------------------
 (defgeneric fb-verbalize-error (err)
   (:documentation "The method, which creates a single text error message."))
 (defgeneric fb-connect (fb-db) 
@@ -26,10 +28,29 @@
   (:documentation "A method for obtaining the values of result variables. Used after Fetch."))
 (defgeneric fb-statement-get-vars-vals-list (statement)
   (:documentation "A method for obtaining the list of values ​​of result variables. Used after Fetch."))
+(defgeneric fb-statement-get-var-val+name (statement index)
+  (:documentation "A method for obtaining the values and names of result variables. Used after Fetch."))
+(defgeneric fb-statement-get-vars-vals+names-list (statement)
+  (:documentation "A method for obtaining the list of values and names of result variables. Used after Fetch."))
+(defgeneric fb-statement-get-vars-names-list (statement)
+  (:documentation "A method for obtaining names of result variables. Used after Fetch."))
 (defgeneric fb-noresult-query (fb-db request-str)
-  (:documentation "A method for performing queries that do not require answers.(insert,delete,update, etc.) (transaction will be created, started and commited automatically)"))
+  (:documentation "A method for performing queries that do not require answers.(insert,delete,update, etc.) 
+(transaction will be created, started and commited automatically)"))
 (defgeneric fb-query-fetch-all (fb-db request-str)
-  (:documentation "The method, which executes the query and returns all its results in a list. (transaction will be created, started and commited automatically)"))
+  (:documentation "The method, which executes the query and returns all its results in a list. 
+(transaction will be created, started and commited automatically)"))
+(defgeneric fb-query-fetch-all+names (fb-db request-str)
+  (:documentation "The method, which executes the query and returns all its results(+names) in a list. 
+(transaction will be created, started and commited automatically)"))
+(defgeneric fb-query-fetch-all+names-header (fb-db request-str)
+  (:documentation "The method, which executes the query and returns all its results(+names header) in a list. 
+(transaction will be created, started and commited automatically)"))
+;===================================================================================
+;; PARAMETERS
+;-----------------------------------------------------------------------------------
+;; *convert-timestamp-to-string* - defined in "cl-fbclient-functions.lisp"
+;; *timestamp-string-format* - defined in "cl-fbclient-functions.lisp"
 ;===================================================================================
 ;; FB-ERROR
 ;-----------------------------------------------------------------------------------
@@ -244,6 +265,14 @@
 (defmethod fb-statement-get-vars-vals-list ((stmt fb-statement))
   (get-vars-vals-list (xsqlda-output* stmt)))
 ;-----------------------------------------------------------------------------------
+(defmethod fb-statement-get-var-val+name ((stmt fb-statement) index)
+  (get-var-val+name (xsqlda-output* stmt) index))
+;-----------------------------------------------------------------------------------
+(defmethod fb-statement-get-vars-vals+names-list ((stmt fb-statement))
+  (get-vars-vals+names-list (xsqlda-output* stmt)))
+;-----------------------------------------------------------------------------------
+(defmethod fb-statement-get-vars-names-list ((stmt fb-statement))
+  (get-vars-names (xsqlda-output* stmt)))
 ;===================================================================================
 ;; 'FB-WIDTH-..' and 'FB-LOOP-..' macroses
 ;-----------------------------------------------------------------------------------
@@ -297,5 +326,16 @@
   (fb-with-statement-db (fb-db st-tmp-name request-str)
 			(loop while (fb-statement-fetch st-tmp-name)
 			     collect (fb-statement-get-vars-vals-list st-tmp-name))))
+;-----------------------------------------------------------------------------------
+(defmethod fb-query-fetch-all+names ((fb-db fb-database) request-str)
+  (fb-with-statement-db (fb-db st-tmp-name request-str)
+    (loop while (fb-statement-fetch st-tmp-name)
+       collect (fb-statement-get-vars-vals+names-list st-tmp-name))))
+;-----------------------------------------------------------------------------------
+(defmethod fb-query-fetch-all+names-header ((fb-db fb-database) request-str)
+  (fb-with-statement-db (fb-db st-tmp-name request-str)
+    (append (list (fb-statement-get-vars-names-list st-tmp-name))
+	    (loop while (fb-statement-fetch st-tmp-name)
+	       collect (fb-statement-get-vars-vals-list st-tmp-name)))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================

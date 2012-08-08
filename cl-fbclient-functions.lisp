@@ -155,17 +155,22 @@
 (defun pow-10 (n)
   (elt +mulp-vector+ (- n)))
 ;-----------------------------------------------------------------------------------
-;; (defun fb-timestamp2local-time (fb-timestamp)
-;;   (let ((ttm (cffi:foreign-alloc 'tm)))
-;;     (isc-decode-timestamp fb-timestamp ttm)
-;;      (with-foreign-slots ((sec min hour mday mon year) ttm tm)
-;;        (local-time:encode-timestamp 0 sec min hour mday (+ 1 mon) (+ 1900 year)))))
-;-----------------------------------------------------------------------------------
 (defun fb-timestamp2datetime-list (fb-timestamp)
   (let ((ttm (cffi:foreign-alloc 'tm)))
     (isc-decode-timestamp fb-timestamp ttm)
      (with-foreign-slots ((sec min hour mday mon year) ttm tm)
        (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec))))
+;-----------------------------------------------------------------------------------
+(defparameter *convert-timestamp-to-string* T)
+(defparameter *timestamp-string-format* (list ':year "/"  ':mon "/" ':mday " " ':hour ":" ':min ":" ':sec))
+(defun datetime-list2string (datetime-list)
+  (if *convert-timestamp-to-string*
+      (with-output-to-string (ss)
+	(loop for x in *timestamp-string-format*
+	   do (if (stringp x) 
+		  (write-string x ss)
+		  (write (getf datetime-list x) :stream ss))))
+      datetime-list))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val-by-type (xsqlda* index type)
   (cond 
@@ -176,9 +181,8 @@
 				   :count (mem-aref (xsqlda-get-var-val xsqlda* index)
 						     :short)))
     ((eq type ':timestamp)
-     ;; (fb-timestamp2local-time (mem-aref (xsqlda-get-var-val xsqlda* index) 'isc_timestamp)));TMP
-     (fb-timestamp2datetime-list (mem-aref (xsqlda-get-var-val xsqlda* index) 
-					'isc_timestamp)))
+     (datetime-list2string (fb-timestamp2datetime-list (mem-aref (xsqlda-get-var-val xsqlda* index) 
+					'isc_timestamp))))
     ((eq type ':decimal)
      (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) (pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
      
@@ -200,11 +204,33 @@
        nil
        (get-var-val-by-type xsqlda* index (nth-value 0 (get-var-type xsqlda* index)))))
 ;-----------------------------------------------------------------------------------
+(defun get-var-name (xsqlda* index)
+  (cffi:foreign-string-to-lisp (cffi:foreign-slot-value 
+				(cffi:mem-aref 
+				 (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar)
+				 'xsqlvar index)
+			        'xsqlvar 'sqlname)
+			       :count (cffi:foreign-slot-value 
+				       (cffi:mem-aref 
+					(cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar)
+					'xsqlvar index)
+				       'xsqlvar 'sqlname_length)))
+;-----------------------------------------------------------------------------------
+(defun get-var-val+name (xsqlda* index)
+  (list (get-var-name xsqlda* index)
+	(get-var-val xsqlda* index)))
+(defun get-vars-names (xsqlda*)
+  (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-name xsqlda* i)))
+;-----------------------------------------------------------------------------------
 (defun get-vars-count (xsqlda*)
   (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqld))
 ;-----------------------------------------------------------------------------------
 (defun get-vars-vals-list (xsqlda*)
   (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-val xsqlda* i)))
+;-----------------------------------------------------------------------------------
+(defun get-vars-vals+names-list (xsqlda*)
+  (loop for i from 0 to (- (get-vars-count xsqlda*) 1) 
+       collect (get-var-val+name xsqlda* i)))
 ;-----------------------------------------------------------------------------------
 (defun status-vector-error-p (status-vector*)
   (and (= (cffi:mem-aref status-vector* :long 0) 1)
