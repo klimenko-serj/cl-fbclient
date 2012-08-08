@@ -168,8 +168,8 @@
 		      (statement-handle* fb-stmt)
 		      0 
 		      (cffi:foreign-string-alloc (request-str fb-stmt)) 
-		      1 
-		      (cffi-sys:make-pointer 0))
+		      0 
+		      (cffi:null-pointer))
      (when (status-vector-error-p status-vector*)
        (unwind-protect
 	    (error 'fb-error 

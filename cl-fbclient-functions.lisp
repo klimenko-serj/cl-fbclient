@@ -81,8 +81,10 @@
 	   ((= type-num 452) ':text)
 	   ((= type-num 448) ':varying)
 	   ((= type-num 510) ':timestamp)
+	   ((= type-num 580) ':decimal)
 	   ;...
 	   ;TODO: other types
+	   (T (format t "Uncknown type #~A!~%" type-num))
 	   ))
 ;-----------------------------------------------------------------------------------
 (defun get-var-type (xsqlda* index)
@@ -142,6 +144,17 @@
 			    'xsqlvar index) 
 			   'xsqlvar 'sqldata))
 ;-----------------------------------------------------------------------------------
+(defun xsqlda-get-var-sqlscale (xsqlda* index)
+  (cffi:foreign-slot-value (cffi:mem-aref 
+			    (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
+			    'xsqlvar index) 
+			   'xsqlvar 'sqlscale))
+;-----------------------------------------------------------------------------------
+(defparameter +mulp-vector+ #(1 1e-1 1e-2 1e-3 1e-4 1e-5 1e-6 1e-7 1e-8 1e-9 1e-10
+				 1e-11 1e-12 1e-13 1e-14 1e-15 1e-16 1e-17 1e-18 1e-19 1e-20))
+(defun pow-10 (n)
+  (elt +mulp-vector+ (- n)))
+;-----------------------------------------------------------------------------------
 ;; (defun fb-timestamp2local-time (fb-timestamp)
 ;;   (let ((ttm (cffi:foreign-alloc 'tm)))
 ;;     (isc-decode-timestamp fb-timestamp ttm)
@@ -163,10 +176,12 @@
 				   :count (mem-aref (xsqlda-get-var-val xsqlda* index)
 						     :short)))
     ((eq type ':timestamp)
+     ;; (fb-timestamp2local-time (mem-aref (xsqlda-get-var-val xsqlda* index) 'isc_timestamp)));TMP
      (fb-timestamp2datetime-list (mem-aref (xsqlda-get-var-val xsqlda* index) 
-					'isc_timestamp)));TMP
-     ;; (fb-timestamp2local-time (mem-aref (xsqlda-get-var-val xsqlda* index) 
-     ;; 					'isc_timestamp)));TMP
+					'isc_timestamp)))
+    ((eq type ':decimal)
+     (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) (pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
+     
     (T (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) type))))
 ;-----------------------------------------------------------------------------------
 (defun is-var-nil (xsqlda* index)
