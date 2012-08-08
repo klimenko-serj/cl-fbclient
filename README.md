@@ -50,6 +50,5 @@ TODO:
 ---------------
 - Create support types: date, time, array
 - Add docstrings
-- Add methods to get **Named** Lists of fetched vals like (:name-1 val-1 :name-2 val-2 ...
 - ...
 
