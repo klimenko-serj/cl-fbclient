@@ -10,6 +10,9 @@
 	   :fb-start-transaction
 	   :fb-commit-transaction
 	   :fb-rollback-transaction
+	   :fb-allocate-statement
+	   :fb-prepare-statement
+	   :fb-execute-statement
 	   :fb-prepare-and-execute-statement
 	   :fb-statement-fetch
 	   :fb-statement-free

@@ -8,44 +8,44 @@
 ;-----------------------------------------------------------------------------------
 (defgeneric fb-verbalize-error (err)
   (:documentation "The method, which creates a single text error message."))
-(defgeneric fb-connect (fb-db) 
-  (:documentation "Method to connect to the database."))
-(defgeneric fb-disconnect (db)
-  (:documentation "Method to disconnect from the database."))
-(defgeneric fb-start-transaction (transaction)
-  (:documentation "Method to start transaction."))
-(defgeneric fb-commit-transaction (transaction)
-  (:documentation "Method to commit transaction."))
-(defgeneric fb-rollback-transaction (transaction)
-  (:documentation "Method to rollback transaction."))
-(defgeneric fb-prepare-and-execute-statement (statement)
-  (:documentation "Method to prepare and execute statement."))
-(defgeneric fb-statement-free (statement)
-  (:documentation "Method to free statement."))
-(defgeneric fb-statement-fetch (statement)
-  (:documentation "Method to fetch results from executed statement."))
-(defgeneric fb-statement-get-var-val (statement index)
-  (:documentation "A method for obtaining the values of result variables. Used after Fetch."))
-(defgeneric fb-statement-get-vars-vals-list (statement)
-  (:documentation "A method for obtaining the list of values ​​of result variables. Used after Fetch."))
-(defgeneric fb-statement-get-var-val+name (statement index)
-  (:documentation "A method for obtaining the values and names of result variables. Used after Fetch."))
-(defgeneric fb-statement-get-vars-vals+names-list (statement)
-  (:documentation "A method for obtaining the list of values and names of result variables. Used after Fetch."))
-(defgeneric fb-statement-get-vars-names-list (statement)
-  (:documentation "A method for obtaining names of result variables. Used after Fetch."))
-(defgeneric fb-noresult-query (fb-db request-str)
-  (:documentation "A method for performing queries that do not require answers.(insert,delete,update, etc.) 
-(transaction will be created, started and commited automatically)"))
-(defgeneric fb-query-fetch-all (fb-db request-str)
-  (:documentation "The method, which executes the query and returns all its results in a list. 
-(transaction will be created, started and commited automatically)"))
-(defgeneric fb-query-fetch-all+names (fb-db request-str)
-  (:documentation "The method, which executes the query and returns all its results(+names) in a list. 
-(transaction will be created, started and commited automatically)"))
-(defgeneric fb-query-fetch-all+names-header (fb-db request-str)
-  (:documentation "The method, which executes the query and returns all its results(+names header) in a list. 
-(transaction will be created, started and commited automatically)"))
+;(defgeneric fb-connect (fb-db) 
+;  (:documentation "Method to connect to the database."))
+;(defgeneric fb-disconnect (db)
+;  (:documentation "Method to disconnect from the database."))
+;; (defgeneric fb-start-transaction (transaction)
+;;   (:documentation "Method to start transaction."))
+;; (defgeneric fb-commit-transaction (transaction)
+;;   (:documentation "Method to commit transaction."))
+;; (defgeneric fb-rollback-transaction (transaction)
+;;   (:documentation "Method to rollback transaction."))
+;; (defgeneric fb-prepare-and-execute-statement (statement)
+;;   (:documentation "Method to prepare and execute statement."))
+;; (defgeneric fb-statement-free (statement)
+;;   (:documentation "Method to free statement."))
+;; (defgeneric fb-statement-fetch (statement)
+;;   (:documentation "Method to fetch results from executed statement."))
+;; (defgeneric fb-statement-get-var-val (statement index)
+;;   (:documentation "A method for obtaining the values of result variables. Used after Fetch."))
+;; (defgeneric fb-statement-get-vars-vals-list (statement)
+;;   (:documentation "A method for obtaining the list of values ​​of result variables. Used after Fetch."))
+;; (defgeneric fb-statement-get-var-val+name (statement index)
+;;   (:documentation "A method for obtaining the values and names of result variables. Used after Fetch."))
+;; (defgeneric fb-statement-get-vars-vals+names-list (statement)
+;;   (:documentation "A method for obtaining the list of values and names of result variables. Used after Fetch."))
+;; (defgeneric fb-statement-get-vars-names-list (statement)
+;;   (:documentation "A method for obtaining names of result variables. Used after Fetch."))
+;; (defgeneric fb-noresult-query (fb-db request-str)
+;;   (:documentation "A method for performing queries that do not require answers.(insert,delete,update, etc.) 
+;; (transaction will be created, started and commited automatically)"))
+;; (defgeneric fb-query-fetch-all (fb-db request-str)
+;;   (:documentation "The method, which executes the query and returns all its results in a list. 
+;; (transaction will be created, started and commited automatically)"))
+;; (defgeneric fb-query-fetch-all+names (fb-db request-str)
+;;   (:documentation "The method, which executes the query and returns all its results(+names) in a list. 
+;; (transaction will be created, started and commited automatically)"))
+;; (defgeneric fb-query-fetch-all+names-header (fb-db request-str)
+;;   (:documentation "The method, which executes the query and returns all its results(+names header) in a list. 
+;; (transaction will be created, started and commited automatically)"))
 ;===================================================================================
 ;; PARAMETERS
 ;-----------------------------------------------------------------------------------
@@ -83,7 +83,8 @@
 	     :initform "masterkey"))
   (:documentation "Class that handles database connection"))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-connect ((fb-db fb-database))
+(defun fb-connect (fb-db)
+  "Method to connect to the database."
   (let ((host+path (concatenate 'string (host fb-db) ":" (path fb-db)))
 	(status-vector* (make-status-vector)))
     (connect-to-db (db-handle* fb-db) status-vector* host+path (user-name fb-db) (password fb-db))
@@ -99,7 +100,8 @@
   (progn (setf (db-handle* db) (make-db-handler))
 	 (when (null no-auto-connect) (fb-connect db))))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-disconnect ((db fb-database))
+(defun fb-disconnect (db)
+  "Method to disconnect from the database."
   (let ((status-vector* (make-status-vector)))
     (isc-detach-database status-vector* (db-handle* db))
     (unwind-protect 
@@ -118,7 +120,8 @@
    (transaction-handle* :accessor transaction-handle*))
   (:documentation "Class that handles transaction."))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-start-transaction ((tr fb-transaction))
+(defun fb-start-transaction (tr)
+  "Method to start transaction."
   (let ((status-vector* (make-status-vector)))
     (start-transaction (db-handle* (fb-db tr)) (transaction-handle* tr) status-vector*)
     (unwind-protect 
@@ -133,7 +136,8 @@
   (progn (setf (transaction-handle* tr) (make-tr-handler))
 	 (when (null no-auto-start) (fb-start-transaction tr))))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-commit-transaction ((tr fb-transaction))
+(defun fb-commit-transaction (tr)
+  "Method to commit transaction."
   (let ((status-vector* (make-status-vector)))
     (isc-commit-transaction status-vector* (transaction-handle* tr))
     (unwind-protect 
@@ -144,7 +148,8 @@
 		  :fbclient-msg (get-status-vector-msg status-vector*)))
     (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-rollback-transaction ((tr fb-transaction))
+(defun fb-rollback-transaction (tr)
+  "Method to rollback transaction."
   (let ((status-vector* (make-status-vector)))
     (isc-rollback-transaction status-vector* (transaction-handle* tr))
     (unwind-protect 
@@ -171,46 +176,114 @@
 	 :initform Nil))
   (:documentation "Class that handles SQL statements."))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-prepare-and-execute-statement ((fb-stmt fb-statement))
-   (let ((status-vector* (make-status-vector)))
-     (isc-dsql-allocate-statement status-vector*
+(defun fb-allocate-statement (fb-stmt)
+  "Method to allocate statement."
+  (let ((status-vector* (make-status-vector)))
+    (isc-dsql-allocate-statement status-vector*
 				 (db-handle* (fb-db (fb-tr fb-stmt)))
 				 (statement-handle* fb-stmt))
-     
-     (when (status-vector-error-p status-vector*)
-       (unwind-protect
-	    (error 'fb-error 
-		   :fb-error-code 30 
-		   :fb-error-text "Unable to allocate statement"
-		   :fbclient-msg (get-status-vector-msg status-vector*))
-	 (cffi-sys:foreign-free status-vector*)))
-     (isc-dsql-prepare status-vector*
+    (when (status-vector-error-p status-vector*)
+      (unwind-protect
+	   (error 'fb-error 
+		  :fb-error-code 30 
+		  :fb-error-text "Unable to allocate statement"
+		  :fbclient-msg (get-status-vector-msg status-vector*))
+	(cffi-sys:foreign-free status-vector*)))
+    (cffi-sys:foreign-free status-vector*)))
+;-----------------------------------------------------------------------------------
+(defun fb-prepare-statement (fb-stmt)
+  "Method to prepare statement."
+  (let ((status-vector* (make-status-vector)))
+    (isc-dsql-prepare status-vector*
 		      (transaction-handle* (fb-tr fb-stmt))
 		      (statement-handle* fb-stmt)
 		      0 
 		      (cffi:foreign-string-alloc (request-str fb-stmt)) 
 		      0 
 		      (cffi:null-pointer))
+    (when (status-vector-error-p status-vector*)
+      (unwind-protect
+	   (error 'fb-error 
+		  :fb-error-code 31 
+		  :fb-error-text (format nil "Unable to prepare statement: ~a"
+					 (request-str fb-stmt))
+		  :fbclient-msg (get-status-vector-msg status-vector*))
+	(cffi-sys:foreign-free status-vector*)))
+    (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
+    (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
+    (isc-dsql-describe status-vector* 
+		       (statement-handle* fb-stmt)
+		       1 
+		       (xsqlda-output* fb-stmt))
+    (when (status-vector-error-p status-vector*)
+      (unwind-protect
+	   (error 'fb-error 
+		  :fb-error-code 32 
+		  :fb-error-text "Error in isc-dsql-describe"
+		  :fbclient-msg (get-status-vector-msg status-vector*))
+	(cffi-sys:foreign-free status-vector*)))
+    (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
+    (alloc-vars-data (xsqlda-output* fb-stmt))
+    (cffi-sys:foreign-free status-vector*)))
+;-----------------------------------------------------------------------------------
+(defun fb-execute-statement (fb-stmt)
+  "Method to execute statement."
+  (let ((status-vector* (make-status-vector)))
+     (isc-dsql-execute status-vector*
+		       (transaction-handle* (fb-tr fb-stmt))
+		       (statement-handle* fb-stmt)
+		       1 
+		       (cffi:make-pointer 0))
      (when (status-vector-error-p status-vector*)
        (unwind-protect
 	    (error 'fb-error 
-		   :fb-error-code 31 
-		   :fb-error-text (format nil "Unable to prepare statement: ~a"
-					  (request-str fb-stmt))
+		   :fb-error-code 33 
+		   :fb-error-text "Unable to execute statement"
 		   :fbclient-msg (get-status-vector-msg status-vector*))
 	 (cffi-sys:foreign-free status-vector*)))
-     (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
-     (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
-     (isc-dsql-describe status-vector* 
-			(statement-handle* fb-stmt)
-			1 
-			(xsqlda-output* fb-stmt))
-     (when (status-vector-error-p status-vector*)
-       (unwind-protect
-	    (error 'fb-error 
-		   :fb-error-code 32 
-		   :fb-error-text "Error in isc-dsql-describe"
-		   :fbclient-msg (get-status-vector-msg status-vector*))
+     (cffi-sys:foreign-free status-vector*)))
+;-----------------------------------------------------------------------------------
+(defun fb-prepare-and-execute-statement (fb-stmt)
+  "Method to prepare and execute statement."
+  (let ((status-vector* (make-status-vector)))
+    (isc-dsql-allocate-statement status-vector*
+				 (db-handle* (fb-db (fb-tr fb-stmt)))
+				 (statement-handle* fb-stmt))
+    
+    (when (status-vector-error-p status-vector*)
+      (unwind-protect
+	   (error 'fb-error 
+		  :fb-error-code 30 
+		  :fb-error-text "Unable to allocate statement"
+		  :fbclient-msg (get-status-vector-msg status-vector*))
+	(cffi-sys:foreign-free status-vector*)))
+    (isc-dsql-prepare status-vector*
+		      (transaction-handle* (fb-tr fb-stmt))
+		      (statement-handle* fb-stmt)
+		      0 
+		      (cffi:foreign-string-alloc (request-str fb-stmt)) 
+		      0 
+		      (cffi:null-pointer))
+    (when (status-vector-error-p status-vector*)
+      (unwind-protect
+	   (error 'fb-error 
+		  :fb-error-code 31 
+		  :fb-error-text (format nil "Unable to prepare statement: ~a"
+					 (request-str fb-stmt))
+		  :fbclient-msg (get-status-vector-msg status-vector*))
+	(cffi-sys:foreign-free status-vector*)))
+    (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
+    (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
+    (isc-dsql-describe status-vector* 
+		       (statement-handle* fb-stmt)
+		       1 
+		       (xsqlda-output* fb-stmt))
+    (when (status-vector-error-p status-vector*)
+      (unwind-protect
+	   (error 'fb-error 
+		  :fb-error-code 32 
+		  :fb-error-text "Error in isc-dsql-describe"
+		  :fbclient-msg (get-status-vector-msg status-vector*))
 	 (cffi-sys:foreign-free status-vector*)))
      (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
      (alloc-vars-data (xsqlda-output* fb-stmt))
@@ -228,10 +301,16 @@
 	 (cffi-sys:foreign-free status-vector*)))
      (cffi-sys:foreign-free status-vector*)))
 ;-----------------------------------------------------------------------------------
-(defmethod initialize-instance :after ((stmt fb-statement) &key (no-auto-prepare-and-execute Nil))
-  (when (null no-auto-prepare-and-execute) (fb-prepare-and-execute-statement stmt)))
+(defmethod initialize-instance :after ((stmt fb-statement) &key (no-auto-execute Nil) (no-auto-prepare Nil) (no-auto-allocate Nil))
+  (when (null no-auto-allocate) 
+    (fb-allocate-statement stmt)
+    (when (null no-auto-prepare) 
+      (fb-prepare-statement stmt)
+      (when (null no-auto-execute)
+	(fb-execute-statement stmt)))))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-statement-free ((stmt fb-statement))
+(defun fb-statement-free (stmt)
+  "Method to free statement."
   (let ((status-vector* (make-status-vector)))
     (isc-dsql-free-statement status-vector* (statement-handle* stmt) 1)
     (unwind-protect
@@ -243,6 +322,7 @@
       (cffi-sys:foreign-free status-vector*))))
 ;-----------------------------------------------------------------------------------
 (defmethod fb-statement-fetch ((stmt fb-statement))
+  "Method to fetch results from executed statement."
   (if (eq (fb-get-sql-type stmt) 'select)
       (let ((status-vector* (make-status-vector)))
 	(let ((fetch-res (isc-dsql-fetch status-vector* (statement-handle* stmt) 1 (xsqlda-output* stmt))))
@@ -259,19 +339,24 @@
 		  :fb-error-text "Unable to fetch statement. Statement type is not SELECT."
 		  :fbclient-msg "")))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-statement-get-var-val ((stmt fb-statement) index)
+(defun fb-statement-get-var-val (stmt index)
+  "A method for obtaining the values of result variables. Used after Fetch."
   (get-var-val (xsqlda-output* stmt) index))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-statement-get-vars-vals-list ((stmt fb-statement))
+(defun fb-statement-get-vars-vals-list (stmt)
+  "A method for obtaining the list of values ​​of result variables. Used after Fetch."
   (get-vars-vals-list (xsqlda-output* stmt)))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-statement-get-var-val+name ((stmt fb-statement) index)
+(defun fb-statement-get-var-val+name (stmt index)
+  "A method for obtaining the values and names of result variables. Used after Fetch."
   (get-var-val+name (xsqlda-output* stmt) index))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-statement-get-vars-vals+names-list ((stmt fb-statement))
+(defun fb-statement-get-vars-vals+names-list (stmt)
+  "A method for obtaining the list of values and names of result variables. Used after Fetch."
   (get-vars-vals+names-list (xsqlda-output* stmt)))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-statement-get-vars-names-list ((stmt fb-statement))
+(defun fb-statement-get-vars-names-list (stmt)
+  "A method for obtaining names of result variables. Used after Fetch."
   (get-vars-names (xsqlda-output* stmt)))
 ;===================================================================================
 ;; 'FB-WIDTH-..' and 'FB-LOOP-..' macroses
@@ -319,20 +404,28 @@
 ;; (automatic 'start' and 'commit' transaction)
 ;; (automatic 'allocate' and 'free' statement)
 ;-----------------------------------------------------------------------------------
-(defmethod fb-noresult-query ((fb-db fb-database) request-str)
+(defun fb-noresult-query (fb-db request-str)
+  "A method for performing queries that do not require answers.(insert,delete,update, etc.) 
+(transaction will be created, started and commited automatically)"
   (fb-with-statement-db (fb-db st-tmp-name request-str) nil))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-query-fetch-all ((fb-db fb-database) request-str)
+(defun fb-query-fetch-all (fb-db request-str)
+  "The method, which executes the query and returns all its results in a list. 
+(transaction will be created, started and commited automatically)"
   (fb-with-statement-db (fb-db st-tmp-name request-str)
 			(loop while (fb-statement-fetch st-tmp-name)
 			     collect (fb-statement-get-vars-vals-list st-tmp-name))))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-query-fetch-all+names ((fb-db fb-database) request-str)
+(defun fb-query-fetch-all+names (fb-db request-str)
+  "The method, which executes the query and returns all its results(+names) in a list. 
+(transaction will be created, started and commited automatically)"
   (fb-with-statement-db (fb-db st-tmp-name request-str)
     (loop while (fb-statement-fetch st-tmp-name)
        collect (fb-statement-get-vars-vals+names-list st-tmp-name))))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-query-fetch-all+names-header ((fb-db fb-database) request-str)
+(defun fb-query-fetch-all+names-header (fb-db request-str)
+  "The method, which executes the query and returns all its results(+names header) in a list. 
+(transaction will be created, started and commited automatically)"
   (fb-with-statement-db (fb-db st-tmp-name request-str)
     (append (list (fb-statement-get-vars-names-list st-tmp-name))
 	    (loop while (fb-statement-fetch st-tmp-name)
