@@ -71,6 +71,7 @@ Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-f
 
 TODO:
 ---------------
+- Update WIKI
 - Create support types: date, time, array
 - Add docstrings
 - ...
