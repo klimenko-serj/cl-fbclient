@@ -67,7 +67,8 @@ Supported SQL-vars types:
   - SBCL-win32-threads (by akovalenko). (WindowsXP)
 
 Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-fbclient/wiki**</a>
----------------         
+---------------     
+**Please report me about BUGs and ask your questions by e-mail: *klimenko.serj@gmail.com* **
 
 TODO:
 ---------------
