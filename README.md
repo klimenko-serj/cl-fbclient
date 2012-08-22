@@ -23,21 +23,6 @@ Supported SQL-vars types:
 
 **First**
 <pre>
-(cl-fbclient:fb-with-database (DB :path "/path-to-db/db-file.fdb")
-     (cl-fbclient:fb-with-transaction (DB TR)
-	  (cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)
-          (cl-fbclient:fb-query "INSERT INTO T1(A1,A2) VALUES(121, 42)" :tr TR)
-          (cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)))
-</pre>
-**Second**
-<pre>
-(cl-fbclient:fb-with-database (DB :path "/path-to-db/db-file.fdb")
-     (cl-fbclient:fb-query "SELECT * FROM T1" :db DB)
-     (cl-fbclient:fb-query "INSERT INTO T1(A1,A2) VALUES(121, 42)" :db DB)
-     (cl-fbclient:fb-query "SELECT * FROM T1" :db DB))
-</pre>
-**Third**
-<pre>
 (require 'cl-fbclient)
 
 ;; create an instance of the database and automatically connect to the database
@@ -55,6 +40,26 @@ Supported SQL-vars types:
 ;; disconnecting from DB
 (cl-fbclient:fb-disconnect *db*)
 </pre>
+**Second(easier)**
+<pre>
+(require 'cl-fbclient)
+
+(cl-fbclient:fb-with-database (DB :path "/path-to-db/db-file.fdb")
+     (cl-fbclient:fb-with-transaction (DB TR)
+	  (cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)
+          (cl-fbclient:fb-query "INSERT INTO T1(A1,A2) VALUES(121, 42)" :tr TR)
+          (cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)))
+</pre>
+**Third(even easier)**
+<pre>
+(require 'cl-fbclient)
+
+(cl-fbclient:fb-with-database (DB :path "/path-to-db/db-file.fdb")
+     (cl-fbclient:fb-query "SELECT * FROM T1" :db DB)
+     (cl-fbclient:fb-query "INSERT INTO T1(A1,A2) VALUES(121, 42)" :db DB)
+     (cl-fbclient:fb-query "SELECT * FROM T1" :db DB))
+</pre>
+
 
 **Tested on:**
   - SBCL(ubuntu)
