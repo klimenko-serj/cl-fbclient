@@ -45,10 +45,10 @@ Supported SQL-vars types:
 (require 'cl-fbclient)
 
 (cl-fbclient:fb-with-database (DB :path "/path-to-db/db-file.fdb")
-     (cl-fbclient:fb-with-transaction (DB TR)
-	  (cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)
-          (cl-fbclient:fb-query "INSERT INTO T1(A1,A2) VALUES(121, 42)" :tr TR)
-          (cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)))
+    (cl-fbclient:fb-with-transaction (DB TR)
+     	(cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)
+        (cl-fbclient:fb-query "INSERT INTO T1(A1,A2) VALUES(121, 42)" :tr TR)
+        (cl-fbclient:fb-query "SELECT * FROM T1" :tr TR)))
 </pre>
 **Third(even easier)**
 <pre>
