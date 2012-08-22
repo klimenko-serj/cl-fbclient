@@ -68,7 +68,7 @@ Supported SQL-vars types:
 
 Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-fbclient/wiki**</a>
 ---------------     
-**Please report me about BUGs and ask your questions by e-mail: *klimenko.serj@gmail.com* **
+<b>Please report me about BUGs and ask your questions by e-mail: *klimenko.serj@gmail.com* </b>
 
 TODO:
 ---------------
