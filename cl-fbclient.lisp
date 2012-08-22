@@ -8,44 +8,6 @@
 ;-----------------------------------------------------------------------------------
 (defgeneric fb-verbalize-error (err)
   (:documentation "The method, which creates a single text error message."))
-;(defgeneric fb-connect (fb-db) 
-;  (:documentation "Method to connect to the database."))
-;(defgeneric fb-disconnect (db)
-;  (:documentation "Method to disconnect from the database."))
-;; (defgeneric fb-start-transaction (transaction)
-;;   (:documentation "Method to start transaction."))
-;; (defgeneric fb-commit-transaction (transaction)
-;;   (:documentation "Method to commit transaction."))
-;; (defgeneric fb-rollback-transaction (transaction)
-;;   (:documentation "Method to rollback transaction."))
-;; (defgeneric fb-prepare-and-execute-statement (statement)
-;;   (:documentation "Method to prepare and execute statement."))
-;; (defgeneric fb-statement-free (statement)
-;;   (:documentation "Method to free statement."))
-;; (defgeneric fb-statement-fetch (statement)
-;;   (:documentation "Method to fetch results from executed statement."))
-;; (defgeneric fb-statement-get-var-val (statement index)
-;;   (:documentation "A method for obtaining the values of result variables. Used after Fetch."))
-;; (defgeneric fb-statement-get-vars-vals-list (statement)
-;;   (:documentation "A method for obtaining the list of values ​​of result variables. Used after Fetch."))
-;; (defgeneric fb-statement-get-var-val+name (statement index)
-;;   (:documentation "A method for obtaining the values and names of result variables. Used after Fetch."))
-;; (defgeneric fb-statement-get-vars-vals+names-list (statement)
-;;   (:documentation "A method for obtaining the list of values and names of result variables. Used after Fetch."))
-;; (defgeneric fb-statement-get-vars-names-list (statement)
-;;   (:documentation "A method for obtaining names of result variables. Used after Fetch."))
-;; (defgeneric fb-noresult-query (fb-db request-str)
-;;   (:documentation "A method for performing queries that do not require answers.(insert,delete,update, etc.) 
-;; (transaction will be created, started and commited automatically)"))
-;; (defgeneric fb-query-fetch-all (fb-db request-str)
-;;   (:documentation "The method, which executes the query and returns all its results in a list. 
-;; (transaction will be created, started and commited automatically)"))
-;; (defgeneric fb-query-fetch-all+names (fb-db request-str)
-;;   (:documentation "The method, which executes the query and returns all its results(+names) in a list. 
-;; (transaction will be created, started and commited automatically)"))
-;; (defgeneric fb-query-fetch-all+names-header (fb-db request-str)
-;;   (:documentation "The method, which executes the query and returns all its results(+names header) in a list. 
-;; (transaction will be created, started and commited automatically)"))
 ;===================================================================================
 ;; PARAMETERS
 ;-----------------------------------------------------------------------------------
@@ -65,6 +27,9 @@
 	  (cl-fbclient:fb-error-code err)
 	  (cl-fbclient:fb-error-text err)
 	  (cl-fbclient:fbclient-msg err)))
+;-----------------------------------------------------------------------------------
+(defmethod print-object ((err fb-error) stream)
+  (format stream (fb-verbalize-error err)))
 ;===================================================================================
 ;; FB-DATABASE
 ;-----------------------------------------------------------------------------------
@@ -301,12 +266,14 @@
 	 (cffi-sys:foreign-free status-vector*)))
      (cffi-sys:foreign-free status-vector*)))
 ;-----------------------------------------------------------------------------------
-(defmethod initialize-instance :after ((stmt fb-statement) &key (no-auto-execute Nil) (no-auto-prepare Nil) (no-auto-allocate Nil))
-  (when (null no-auto-allocate) 
+(defmethod initialize-instance :after ((stmt fb-statement) 
+				       &key (no-auto-execute Nil) 
+				       (no-auto-prepare Nil) (no-auto-allocate Nil))
+  (unless no-auto-allocate 
     (fb-allocate-statement stmt)
-    (when (null no-auto-prepare) 
+    (unless no-auto-prepare
       (fb-prepare-statement stmt)
-      (when (null no-auto-execute)
+      (unless no-auto-execute
 	(fb-execute-statement stmt)))))
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-free (stmt)
@@ -333,7 +300,7 @@
 			:fb-error-text "Unable to fetch statement"
 			:fbclient-msg (get-status-vector-msg status-vector*)))
 	    (cffi-sys:foreign-free status-vector*))
-	  (when(= fetch-res 0) T)))
+	  (when (= fetch-res 0) T)))
       (error 'fb-error 
 		  :fb-error-code 36 
 		  :fb-error-text "Unable to fetch statement. Statement type is not SELECT."
@@ -360,6 +327,13 @@
   (get-vars-names (xsqlda-output* stmt)))
 ;===================================================================================
 ;; 'FB-WIDTH-..' and 'FB-LOOP-..' macroses
+;-----------------------------------------------------------------------------------
+(defmacro fb-with-database ((database-name &rest params) &body body)
+  "Macro to automatic connect and disconnect database."
+  `(let ((,database-name (make-instance 'fb-database ,@params)))
+     (unwind-protect 
+	 (progn ,@body)
+     (fb-disconnect ,database-name))))
 ;-----------------------------------------------------------------------------------
 (defmacro fb-with-transaction ((fb-db transaction-name) &body body)
   "Macro to create, automatic start and commit transactions."
@@ -398,6 +372,37 @@
 		     collect `(,(nth i varlist) 
 				(fb-statement-get-var-val ,st-name ,i)))
 	      (progn ,@body))))))
+;-----------------------------------------------------------------------------------
+;;;  FB-QUERY macro
+;; working with transactions or databases(transaction will be created, started and commited automatically)
+;; parameters:
+;; ':db' or ':tr' fb-database or fb-transaction
+;; :header-names - Add header(which contains names of variables) to values list 
+;; :vars-names - Add variable name to value like ("name" ~val~)
+;; :one-record - Read only one record.
+;-----------------------------------------------------------------------------------
+(defmacro fb-query (request-str &rest kpar)
+  (progn 
+    (unless (evenp (length kpar)) (setf kpar (append kpar '(Nil))))
+    (append 
+     (cond ((getf kpar :db)
+	    `(fb-with-statement-db (,(getf kpar :db) tmp-stmt ,request-str)))
+	   ((getf kpar :tr)
+	    `(fb-with-statement (,(getf kpar :tr) tmp-stmt ,request-str)))
+	   (T 'ERR))
+     `((if (eq (fb-get-sql-type tmp-stmt) 'select)
+	   (append 
+	     ,(if (member :header-names kpar)
+		  '(list (fb-statement-get-vars-names-list tmp-stmt))
+		  ''())
+	     ,(let ((funct (if (member :vars-names kpar) 
+			      'fb-statement-get-vars-vals+names-list
+			      'fb-statement-get-vars-vals-list)))
+	       (if (member :one-record kpar)
+		   `(when (fb-statement-fetch tmp-stmt) (list (,funct tmp-stmt)))
+		   `(loop while (fb-statement-fetch tmp-stmt)
+		       collect (,funct tmp-stmt)))))
+	   Nil)))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 ;; QUERY functions 

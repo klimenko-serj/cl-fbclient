@@ -22,11 +22,13 @@
 	   :fb-statement-get-var-val+name
 	   :fb-statement-get-vars-vals+names-list
 	   :fb-get-sql-type
+	   :fb-with-database
 	   :fb-with-transaction
 	   :fb-with-statement
 	   :fb-with-statement-db
 	   :fb-loop-statement-fetch
 	   :fb-loop-query-fetch
+	   :fb-query
 	   :fb-noresult-query
 	   :fb-query-fetch-all
 	   :fb-query-fetch-all+names

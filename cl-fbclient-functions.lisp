@@ -219,6 +219,7 @@
 (defun get-var-val+name (xsqlda* index)
   (list (get-var-name xsqlda* index)
 	(get-var-val xsqlda* index)))
+;-----------------------------------------------------------------------------------
 (defun get-vars-names (xsqlda*)
   (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-name xsqlda* i)))
 ;-----------------------------------------------------------------------------------
