@@ -187,7 +187,19 @@
 		  :fb-error-text "Error in isc-dsql-describe"
 		  :fbclient-msg (get-status-vector-msg status-vector*))
 	(cffi-sys:foreign-free status-vector*)))
-    (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
+    (when (need-remake-xsqlda (xsqlda-output* fb-stmt))
+      (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
+      (isc-dsql-describe status-vector* 
+			 (statement-handle* fb-stmt)
+			 1 
+			 (xsqlda-output* fb-stmt))
+      (when (status-vector-error-p status-vector*)
+	(unwind-protect
+	     (error 'fb-error 
+		    :fb-error-code 32 
+		    :fb-error-text "Error in isc-dsql-describe"
+		    :fbclient-msg (get-status-vector-msg status-vector*))
+	  (cffi-sys:foreign-free status-vector*))))
     (alloc-vars-data (xsqlda-output* fb-stmt))
     (cffi-sys:foreign-free status-vector*)))
 ;-----------------------------------------------------------------------------------

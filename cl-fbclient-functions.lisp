@@ -63,14 +63,14 @@
      (setf (cffi:foreign-slot-value new-xsqlda 'xsqlda 'sqln) n)
      new-xsqlda))
 ;-----------------------------------------------------------------------------------
+(defun need-remake-xsqlda (tmp-xsqlda)
+  (> (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqld) 
+     (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqln)))
+;-----------------------------------------------------------------------------------
 (defun remake-xsqlda (tmp-xsqlda)
-  (cond ((> (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqld) 
-	    (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqln))
-	(let ((new-xsqlda (make-xsqlda 
-			   (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqld))))
-	  (cffi-sys:foreign-free tmp-xsqlda)
-	  new-xsqlda))
-	(T tmp-xsqlda)))
+  (unwind-protect 
+       (make-xsqlda (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqld))
+    (cffi-sys:foreign-free tmp-xsqlda)))
 ;-----------------------------------------------------------------------------------
 (defun get-var-type-by-fbtype-num (type-num)
       (cond 
