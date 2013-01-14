@@ -11,8 +11,7 @@
 ;===================================================================================
 ;; PARAMETERS
 ;-----------------------------------------------------------------------------------
-;; *convert-timestamp-to-string* - defined in "cl-fbclient-functions.lisp"
-;; *timestamp-string-format* - defined in "cl-fbclient-functions.lisp"
+;; *timestamp-alist-converter* - defined in "cl-fbclient-functions.lisp"
 ;===================================================================================
 ;; FB-ERROR
 ;-----------------------------------------------------------------------------------
@@ -173,64 +172,6 @@
 		       (cffi:make-pointer 0))
      (process-status-vector status-vector* 33 "Unable to execute statement")))
 ;-----------------------------------------------------------------------------------
-;(defun fb-prepare-and-execute-statement (fb-stmt)
-;  "Method to prepare and execute statement."
-;  (let ((status-vector* (make-status-vector)))
-;    (isc-dsql-allocate-statement status-vector*
-;				 (db-handle* (fb-db (fb-tr fb-stmt)))
-;				 (statement-handle* fb-stmt))
- ;   
-;    (when (status-vector-error-p status-vector*)
-;      (unwind-protect
-;	   (error 'fb-error 
-;		  :fb-error-code 30 
-;		  :fb-error-text "Unable to allocate statement"
-;		  :fbclient-msg (get-status-vector-msg status-vector*))
-;	(cffi-sys:foreign-free status-vector*)))
- ;   (isc-dsql-prepare status-vector*
-;		      (transaction-handle* (fb-tr fb-stmt))
-;		      (statement-handle* fb-stmt)
-;		      0 
-;		      (cffi:foreign-string-alloc (request-str fb-stmt)) 
-;		      0 
-;		      (cffi:null-pointer))
- ;   (when (status-vector-error-p status-vector*)
-;      (unwind-protect
-;	   (error 'fb-error 
-;		  :fb-error-code 31 
-;		  :fb-error-text (format nil "Unable to prepare statement: ~a"
-;					 (request-str fb-stmt))
-;		  :fbclient-msg (get-status-vector-msg status-vector*))
-;	(cffi-sys:foreign-free status-vector*)))
- ;   (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
-;    (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
-;    (isc-dsql-describe status-vector* 
-;		       (statement-handle* fb-stmt)
-;		       1 
-;		       (xsqlda-output* fb-stmt))
- ;   (when (status-vector-error-p status-vector*)
-;      (unwind-protect
-;	   (error 'fb-error 
-;		  :fb-error-code 32 
-;		  :fb-error-text "Error in isc-dsql-describe"
-;		  :fbclient-msg (get-status-vector-msg status-vector*))
-;	 (cffi-sys:foreign-free status-vector*)))
- ;    (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
-;     (alloc-vars-data (xsqlda-output* fb-stmt))
-;     (isc-dsql-execute status-vector*
-;		       (transaction-handle* (fb-tr fb-stmt))
-;		       (statement-handle* fb-stmt)
-;		       1 
-;		       (cffi:make-pointer 0))
-;     (when (status-vector-error-p status-vector*)
-;       (unwind-protect
-;	    (error 'fb-error 
-;		   :fb-error-code 33 
-;		   :fb-error-text "Unable to execute statement"
-;		   :fbclient-msg (get-status-vector-msg status-vector*))
-;	 (cffi-sys:foreign-free status-vector*)))
- ;    (cffi-sys:foreign-free status-vector*)))
-;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((stmt fb-statement) 
 				       &key (no-auto-execute Nil) 
 				       (no-auto-prepare Nil) (no-auto-allocate Nil))
@@ -331,7 +272,7 @@
 ;; parameters:
 ;; ':db' or ':tr' fb-database or fb-transaction
 ;; :header-names - Add header(which contains names of variables) to values list 
-;; :vars-names - Add variable name to value like ("name" ~val~)
+;; :vars-names - Add variable name to value like :name ~val~
 ;; :one-record - Read only one record.
 ;-----------------------------------------------------------------------------------
 (defmacro fb-query (request-str &rest kpar)
@@ -352,7 +293,7 @@
 			      'fb-statement-get-vars-vals+names-list
 			      'fb-statement-get-vars-vals-list)))
 	       (if (member :one-record kpar)
-		   `(when (fb-statement-fetch tmp-stmt) (list (,funct tmp-stmt)))
+		   `(when (fb-statement-fetch tmp-stmt) (,funct tmp-stmt))
 		   `(loop while (fb-statement-fetch tmp-stmt)
 		       collect (,funct tmp-stmt)))))
 	   Nil)))))

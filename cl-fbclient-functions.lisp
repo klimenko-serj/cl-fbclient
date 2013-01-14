@@ -73,15 +73,15 @@
     (cffi-sys:foreign-free tmp-xsqlda)))
 ;-----------------------------------------------------------------------------------
 (defun get-var-type-by-fbtype-num (type-num)
-      (cond 
-	   ((= type-num 496) ':int)
-	   ((= type-num 500) ':short)
-	   ((= type-num 482) ':float)
-	   ((= type-num 480) ':double)
-	   ((= type-num 452) ':text)
-	   ((= type-num 448) ':varying)
-	   ((= type-num 510) ':timestamp)
-	   ((= type-num 580) ':decimal)
+      (case type-num
+	   (496 ':int)
+	   (500 ':short)
+	   (482 ':float)
+	   (480 ':double)
+	   (452 ':text)
+	   (448 ':varying)
+	   (510 ':timestamp)
+	   (580 ':decimal)
 	   ;...
 	   ;TODO: other types
 	   (T (format t "Uncknown type #~A!~%" type-num))
@@ -93,8 +93,9 @@
 		   (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 'xsqlvar index) 
 		  'xsqlvar 'sqltype))
 	(can-nil T))
-    (cond ((oddp tp) (decf tp))
-	  (T (setf can-nil nil)))
+    (if (oddp tp) 
+        (decf tp)
+        (setf can-nil nil))
     (values-list (list (get-var-type-by-fbtype-num tp) can-nil))))
 ;-----------------------------------------------------------------------------------
 (defun get-var-sqlln (xsqlda* index)
@@ -129,11 +130,12 @@
 	(res* (cffi:foreign-alloc :char :count 8 :initial-element 0))
 	(st-type nil))
     (isc-dsql-sql-info status-vector* stmt-handle-pointer 1 req* 8 res*)
-    (setf st-type (cond ((= (cffi:mem-aref res* :char 3) 1) 'select)
-			((= (cffi:mem-aref res* :char 3) 2) 'insert)
-			((= (cffi:mem-aref res* :char 3) 3) 'update)
-			((= (cffi:mem-aref res* :char 3) 4) 'delete)
-			(T nil)))
+    (setf st-type (case (cffi:mem-aref res* :char 3)
+                    (1 'select)
+                    (2 'insert)
+                    (3 'update)
+                    (4 'delete)
+                    (T nil)))
     (cffi-sys:foreign-free req*)
     (cffi-sys:foreign-free res*)
     st-type))
@@ -161,16 +163,22 @@
      (with-foreign-slots ((sec min hour mday mon year) ttm tm)
        (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec))))
 ;-----------------------------------------------------------------------------------
-(defparameter *convert-timestamp-to-string* T)
-(defparameter *timestamp-string-format* (list ':year "/"  ':mon "/" ':mday " " ':hour ":" ':min ":" ':sec))
-(defun datetime-list2string (datetime-list)
-  (if *convert-timestamp-to-string*
-      (with-output-to-string (ss)
-	(loop for x in *timestamp-string-format*
-	   do (if (stringp x) 
-		  (write-string x ss)
-		  (write (getf datetime-list x) :stream ss))))
-      datetime-list))
+(defun timestamp-alist-to-string (timestamp-alist)
+  (format nil
+            "~A.~A.~A ~A:~A:~A"
+            (getf timestamp-alist :mday)
+            (getf timestamp-alist :mon)
+            (getf timestamp-alist :year)
+            (getf timestamp-alist :hour)
+            (getf timestamp-alist :min)
+            (getf timestamp-alist :sec)))
+;-----------------------------------------------------------------------------------
+(defparameter *timestamp-alist-converter* #'timestamp-alist-to-string)
+;-----------------------------------------------------------------------------------
+(defun convert-timestamp-alist (timestamp-alist)
+  (if *timestamp-alist-converter*
+      (funcall *timestamp-alist-converter* timestamp-alist)
+      timestamp-alist))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val-by-type (xsqlda* index type)
   (cond 
@@ -181,8 +189,9 @@
 				   :count (mem-aref (xsqlda-get-var-val xsqlda* index)
 						     :short)))
     ((eq type ':timestamp)
-     (datetime-list2string (fb-timestamp2datetime-list (mem-aref (xsqlda-get-var-val xsqlda* index) 
-					'isc_timestamp))))
+     (convert-timestamp-alist
+      (fb-timestamp2datetime-list (mem-aref (xsqlda-get-var-val xsqlda* index) 
+                                            'isc_timestamp))))
     ((eq type ':decimal)
      (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) (pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
      
@@ -217,7 +226,7 @@
 				       'xsqlvar 'sqlname_length)))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val+name (xsqlda* index)
-  (list (get-var-name xsqlda* index)
+  (list (intern (get-var-name xsqlda* index) "KEYWORD")
 	(get-var-val xsqlda* index)))
 ;-----------------------------------------------------------------------------------
 (defun get-vars-names (xsqlda*)
@@ -230,8 +239,8 @@
   (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-val xsqlda* i)))
 ;-----------------------------------------------------------------------------------
 (defun get-vars-vals+names-list (xsqlda*)
-  (loop for i from 0 to (- (get-vars-count xsqlda*) 1) 
-       collect (get-var-val+name xsqlda* i)))
+    (loop for i from 0 to (- (get-vars-count xsqlda*) 1) 
+          append (get-var-val+name xsqlda* i)))
 ;-----------------------------------------------------------------------------------
 (defun status-vector-error-p (status-vector*)
   (and (= (cffi:mem-aref status-vector* :long 0) 1)

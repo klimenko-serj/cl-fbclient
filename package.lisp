@@ -38,7 +38,9 @@
 	   :fbclient-msg
 	   :fb-error
 	   :fb-verbalize-error
-	   :*convert-timestamp-to-string*
-	   :*timestamp-string-format*
+           :*timestamp-alist-converter*
+           :timestamp-alist-to-string
+	   ;; :*convert-timestamp-to-string*
+	   ;; :*timestamp-string-format*
 	   ))
 
