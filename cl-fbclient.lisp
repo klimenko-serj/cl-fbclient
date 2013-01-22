@@ -204,7 +204,7 @@
   "A method for obtaining the values of result variables. Used after Fetch."
   (get-var-val (xsqlda-output* stmt) index))
 ;-----------------------------------------------------------------------------------
-(defun fb-statement-get-vars-vals-list (stmt &rest rst)
+(defun fb-statement-get-vars-vals-list (stmt)
   "A method for obtaining the list of values ​​of result variables. Used after Fetch."
   (get-vars-vals-list (xsqlda-output* stmt)))
 ;-----------------------------------------------------------------------------------
@@ -272,7 +272,7 @@
 ;; parameters:
 ;; ':db' or ':tr' fb-database or fb-transaction
 ;; :header-names - Add header(which contains names of variables) to values list 
-;; :vars-names - Add variable name to value like :name ~val~
+;; :vars-names <optional (list ...)> - Add variable name or name from <list> to value like :name ~val~
 ;; :one-record - Read only one record.
 ;-----------------------------------------------------------------------------------
 (defmacro fb-query (request-str &rest kpar)
