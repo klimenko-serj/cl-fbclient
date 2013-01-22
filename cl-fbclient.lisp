@@ -204,7 +204,7 @@
   "A method for obtaining the values of result variables. Used after Fetch."
   (get-var-val (xsqlda-output* stmt) index))
 ;-----------------------------------------------------------------------------------
-(defun fb-statement-get-vars-vals-list (stmt)
+(defun fb-statement-get-vars-vals-list (stmt &rest rst)
   "A method for obtaining the list of values ​​of result variables. Used after Fetch."
   (get-vars-vals-list (xsqlda-output* stmt)))
 ;-----------------------------------------------------------------------------------
@@ -212,9 +212,9 @@
   "A method for obtaining the values and names of result variables. Used after Fetch."
   (get-var-val+name (xsqlda-output* stmt) index))
 ;-----------------------------------------------------------------------------------
-(defun fb-statement-get-vars-vals+names-list (stmt)
+(defun fb-statement-get-vars-vals+names-list (stmt &optional (names Nil))
   "A method for obtaining the list of values and names of result variables. Used after Fetch."
-  (get-vars-vals+names-list (xsqlda-output* stmt)))
+  (get-vars-vals+names-list (xsqlda-output* stmt) names))
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-get-vars-names-list (stmt)
   "A method for obtaining names of result variables. Used after Fetch."
@@ -284,19 +284,24 @@
 	   ((getf kpar :tr)
 	    `(fb-with-statement (,(getf kpar :tr) tmp-stmt ,request-str)))
 	   (T 'ERR))
-     `((if (eq (fb-get-sql-type tmp-stmt) 'select)
-	   (append 
-	     ,(if (member :header-names kpar)
+     `((when (eq (fb-get-sql-type tmp-stmt) 'select)
+	   ,(append 
+	     (if (member :header-names kpar)
 		  '(list (fb-statement-get-vars-names-list tmp-stmt))
-		  ''())
-	     ,(let ((funct (if (member :vars-names kpar) 
-			      'fb-statement-get-vars-vals+names-list
-			      'fb-statement-get-vars-vals-list)))
-	       (if (member :one-record kpar)
-		   `(when (fb-statement-fetch tmp-stmt) (,funct tmp-stmt))
-		   `(loop while (fb-statement-fetch tmp-stmt)
-		       collect (,funct tmp-stmt)))))
-	   Nil)))))
+		  'Nil)
+	     (let*((mmbr-vars-names  (member :vars-names kpar))
+                   (func (if mmbr-vars-names
+                              (if (listp (second mmbr-vars-names))
+                                  `(fb-statement-get-vars-vals+names-list 
+                                    tmp-stmt 
+                                    ,(second mmbr-vars-names))
+                                  '(fb-statement-get-vars-vals+names-list tmp-stmt))
+                              '(fb-statement-get-vars-vals-list tmp-stmt))))
+                (if (member :one-record kpar)
+                    `(when (fb-statement-fetch tmp-stmt)
+                       ,func)
+                    `(loop while (fb-statement-fetch tmp-stmt)
+		       collect ,func)))))))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 ;; QUERY functions 

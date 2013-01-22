@@ -238,9 +238,13 @@
 (defun get-vars-vals-list (xsqlda*)
   (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-val xsqlda* i)))
 ;-----------------------------------------------------------------------------------
-(defun get-vars-vals+names-list (xsqlda*)
-    (loop for i from 0 to (- (get-vars-count xsqlda*) 1) 
-          append (get-var-val+name xsqlda* i)))
+(defun get-vars-vals+names-list (xsqlda* &optional (names Nil))
+  (let ((max-index (- (get-vars-count xsqlda*) 1)))
+    (if names
+        (loop for i from 0 to max-index 
+              append (list (nth i names) (get-var-val xsqlda* i))) 
+        (loop for i from 0 to max-index 
+              append (get-var-val+name xsqlda* i)))))
 ;-----------------------------------------------------------------------------------
 (defun status-vector-error-p (status-vector*)
   (and (= (cffi:mem-aref status-vector* :long 0) 1)
