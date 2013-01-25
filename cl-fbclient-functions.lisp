@@ -242,7 +242,9 @@
   (let ((max-index (- (get-vars-count xsqlda*) 1)))
     (if names
         (loop for i from 0 to max-index 
-              append (list (nth i names) (get-var-val xsqlda* i))) 
+              append (if (nth i names)
+                         (list (nth i names) (get-var-val xsqlda* i))
+                         (get-var-val+name xsqlda* i)))
         (loop for i from 0 to max-index 
               append (get-var-val+name xsqlda* i)))))
 ;-----------------------------------------------------------------------------------
