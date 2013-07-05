@@ -39,7 +39,7 @@
   (sqldabc :int)
   (sqln :short)
   (sqld :short)
-  (sqlvar XSQLVAR :count 1))
+  (sqlvar (:struct XSQLVAR) :count 1))
 ;-----------------------------------------------------------------------------------
 (cffi:defcstruct isc_timestamp 
   (timestamp_date isc_date)

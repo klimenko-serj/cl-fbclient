@@ -52,24 +52,27 @@
 		       (make-dpb login pass)))
 ;-----------------------------------------------------------------------------------
 (defun start-transaction (db-handle-pointer transaction-pointer status-vector-pointer)
-  (isc-start-transaction status-vector-pointer transaction-pointer 1 db-handle-pointer 0 (cffi-sys:make-pointer 0)))
+  (isc-start-transaction status-vector-pointer transaction-pointer 1 
+			 db-handle-pointer 0 (cffi-sys:make-pointer 0)))
 ;-----------------------------------------------------------------------------------
 (defun XSQLDA-length (n)
-  (+ (cffi:foreign-type-size 'XSQLDA) (* (- n 1) (cffi:foreign-type-size 'XSQLVAR)))) 
+  (+ (cffi:foreign-type-size '(:struct XSQLDA)) 
+     (* (- n 1) (cffi:foreign-type-size '(:struct XSQLVAR)))))
 ;-----------------------------------------------------------------------------------
 (defun make-xsqlda (n)
-  (let ((new-xsqlda (cffi:foreign-alloc :char :count (XSQLDA-length n) :initial-element 0)))
-     (setf (cffi:foreign-slot-value new-xsqlda 'xsqlda 'version) 1)
-     (setf (cffi:foreign-slot-value new-xsqlda 'xsqlda 'sqln) n)
+  (let ((new-xsqlda (cffi:foreign-alloc :char :count (XSQLDA-length n) 
+					:initial-element 0)))
+     (setf (cffi:foreign-slot-value new-xsqlda '(:struct xsqlda) 'version) 1
+	   (cffi:foreign-slot-value new-xsqlda '(:struct xsqlda) 'sqln) n)
      new-xsqlda))
 ;-----------------------------------------------------------------------------------
 (defun need-remake-xsqlda (tmp-xsqlda)
-  (> (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqld) 
-     (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqln)))
+  (> (cffi:foreign-slot-value tmp-xsqlda '(:struct xsqlda) 'sqld) 
+     (cffi:foreign-slot-value tmp-xsqlda '(:struct xsqlda) 'sqln)))
 ;-----------------------------------------------------------------------------------
 (defun remake-xsqlda (tmp-xsqlda)
   (unwind-protect 
-       (make-xsqlda (cffi:foreign-slot-value tmp-xsqlda 'xsqlda 'sqld))
+       (make-xsqlda (cffi:foreign-slot-value tmp-xsqlda '(:struct xsqlda) 'sqld))
     (cffi-sys:foreign-free tmp-xsqlda)))
 ;-----------------------------------------------------------------------------------
 (defun get-var-type-by-fbtype-num (type-num)
@@ -89,9 +92,10 @@
 ;-----------------------------------------------------------------------------------
 (defun get-var-type (xsqlda* index)
   (let ((tp (cffi:foreign-slot-value 
-		  (cffi:mem-aref 
-		   (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 'xsqlvar index) 
-		  'xsqlvar 'sqltype))
+		  (cffi:mem-aptr 
+		   (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
+		   '(:struct xsqlvar) index) 
+		  '(:struct xsqlvar) 'sqltype))
 	(can-nil T))
     (if (oddp tp) 
         (decf tp)
@@ -100,27 +104,30 @@
 ;-----------------------------------------------------------------------------------
 (defun get-var-sqlln (xsqlda* index)
   (cffi:foreign-slot-value 
-   (cffi:mem-aref 
-    (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
-    'xsqlvar index) 'xsqlvar 'sqllen))
+   (cffi:mem-aptr 
+    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+    '(:struct xsqlvar) index) 
+   '(:struct xsqlvar) 'sqllen))
 ;-----------------------------------------------------------------------------------
 (defun alloc-var-data-default (xsqlda* index)
   (setf (cffi:foreign-slot-value 
-	 (cffi:mem-aref 
-	  (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
-	  'xsqlvar index) 'xsqlvar 'sqldata) 
+	 (cffi:mem-aptr 
+	  (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+	  '(:struct xsqlvar) index) 
+	 '(:struct xsqlvar) 'sqldata) 
 	(cffi:foreign-alloc :char 
 			    :initial-element 0 
 			    :count (get-var-sqlln xsqlda* index))))
 ;-----------------------------------------------------------------------------------
 (defun alloc-vars-data (sqlda)
-  (loop for i from 0 to (- (cffi:foreign-slot-value sqlda 'xsqlda 'sqld) 1) do
+  (loop for i from 0 to (- (cffi:foreign-slot-value sqlda '(:struct xsqlda) 'sqld) 1) do
        (multiple-value-bind (tp can-nil) (get-var-type sqlda i)
 	 (when can-nil
 	   (setf (cffi:foreign-slot-value 
-		  (cffi:mem-aref 
-		   (cffi:foreign-slot-value sqlda 'xsqlda 'sqlvar) 
-		   'xsqlvar i) 'xsqlvar 'sqlind) 
+		  (cffi:mem-aptr 
+		   (cffi:foreign-slot-pointer sqlda '(:struct xsqlda) 'sqlvar) 
+		   '(:struct xsqlvar) i) 
+		  '(:struct xsqlvar) 'sqlind) 
 		 (cffi:foreign-alloc :short)))
 	 (alloc-var-data-default sqlda i))))
 ;-----------------------------------------------------------------------------------
@@ -141,16 +148,16 @@
     st-type))
 ;-----------------------------------------------------------------------------------
 (defun xsqlda-get-var-val (xsqlda* index)
-  (cffi:foreign-slot-value (cffi:mem-aref 
-			    (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
-			    'xsqlvar index) 
-			   'xsqlvar 'sqldata))
+  (cffi:foreign-slot-value (cffi:mem-aptr 
+			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+			    '(:struct xsqlvar) index) 
+			   '(:struct xsqlvar) 'sqldata))
 ;-----------------------------------------------------------------------------------
 (defun xsqlda-get-var-sqlscale (xsqlda* index)
-  (cffi:foreign-slot-value (cffi:mem-aref 
-			    (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
-			    'xsqlvar index) 
-			   'xsqlvar 'sqlscale))
+  (cffi:foreign-slot-value (cffi:mem-aptr 
+			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+			    '(:struct xsqlvar) index) 
+			   '(:struct xsqlvar) 'sqlscale))
 ;-----------------------------------------------------------------------------------
 (defparameter +mulp-vector+ #(1 1e-1 1e-2 1e-3 1e-4 1e-5 1e-6 1e-7 1e-8 1e-9 1e-10
 				 1e-11 1e-12 1e-13 1e-14 1e-15 1e-16 1e-17 1e-18 1e-19 1e-20))
@@ -158,9 +165,9 @@
   (elt +mulp-vector+ (- n)))
 ;-----------------------------------------------------------------------------------
 (defun fb-timestamp2datetime-list (fb-timestamp)
-  (let ((ttm (cffi:foreign-alloc 'tm)))
+  (let ((ttm (cffi:foreign-alloc '(:struct tm))))
     (isc-decode-timestamp fb-timestamp ttm)
-     (with-foreign-slots ((sec min hour mday mon year) ttm tm)
+     (with-foreign-slots ((sec min hour mday mon year) ttm (:struct tm))
        (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec))))
 ;-----------------------------------------------------------------------------------
 (defun timestamp-alist-to-string (timestamp-alist)
@@ -190,19 +197,20 @@
 						     :short)))
     ((eq type ':timestamp)
      (convert-timestamp-alist
-      (fb-timestamp2datetime-list (mem-aref (xsqlda-get-var-val xsqlda* index) 
-                                            'isc_timestamp))))
+      (fb-timestamp2datetime-list (mem-aptr (xsqlda-get-var-val xsqlda* index) 
+                                            '(:struct isc_timestamp)))))
     ((eq type ':decimal)
-     (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) (pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
-     
+     (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) 
+	(pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
     (T (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) type))))
 ;-----------------------------------------------------------------------------------
 (defun is-var-nil (xsqlda* index)
   (if (nth-value 1 (get-var-type xsqlda* index))
       (if (= -1 (cffi:mem-aref (cffi:foreign-slot-value 
-				    (cffi:mem-aref 
-				     (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar) 
-				     'xsqlvar index) 'xsqlvar 'sqlind)
+				    (cffi:mem-aptr 
+				     (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+				     '(:struct xsqlvar) index) 
+				    '(:struct xsqlvar) 'sqlind)
 				   :short))
 	  T
 	  Nil)
@@ -214,16 +222,17 @@
        (get-var-val-by-type xsqlda* index (nth-value 0 (get-var-type xsqlda* index)))))
 ;-----------------------------------------------------------------------------------
 (defun get-var-name (xsqlda* index)
-  (cffi:foreign-string-to-lisp (cffi:foreign-slot-value 
-				(cffi:mem-aref 
-				 (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar)
-				 'xsqlvar index)
-			        'xsqlvar 'sqlname)
-			       :count (cffi:foreign-slot-value 
-				       (cffi:mem-aref 
-					(cffi:foreign-slot-value xsqlda* 'xsqlda 'sqlvar)
-					'xsqlvar index)
-				       'xsqlvar 'sqlname_length)))
+  (cffi:foreign-string-to-lisp 
+   (cffi:foreign-slot-value 
+    (cffi:mem-aptr 
+     (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
+     '(:struct xsqlvar) index)
+    '(:struct xsqlvar) 'sqlname)
+   :count (cffi:foreign-slot-value 
+	   (cffi:mem-aptr 
+	    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
+	    '(:struct xsqlvar) index)
+	   '(:struct xsqlvar) 'sqlname_length)))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val+name (xsqlda* index)
   (list (intern (get-var-name xsqlda* index) "KEYWORD")
@@ -233,7 +242,7 @@
   (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-name xsqlda* i)))
 ;-----------------------------------------------------------------------------------
 (defun get-vars-count (xsqlda*)
-  (cffi:foreign-slot-value xsqlda* 'xsqlda 'sqld))
+  (cffi:foreign-slot-value xsqlda* '(:struct xsqlda) 'sqld))
 ;-----------------------------------------------------------------------------------
 (defun get-vars-vals-list (xsqlda*)
   (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-val xsqlda* i)))

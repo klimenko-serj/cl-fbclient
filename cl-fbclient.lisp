@@ -171,6 +171,7 @@
 		       1 
 		       (cffi:make-pointer 0))
      (process-status-vector status-vector* 33 "Unable to execute statement")))
+
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((stmt fb-statement) 
 				       &key (no-auto-execute Nil) 
@@ -188,7 +189,7 @@
     (isc-dsql-free-statement status-vector* (statement-handle* stmt) 1)
     (process-status-vector status-vector* 35 "Unable to free statement")))
 ;-----------------------------------------------------------------------------------
-(defmethod fb-statement-fetch ((stmt fb-statement))
+(defun fb-statement-fetch (stmt)
   "Method to fetch results from executed statement."
   (if (eq (fb-get-sql-type stmt) 'select)
       (with-status-vector status-vector*

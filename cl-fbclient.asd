@@ -5,7 +5,7 @@
   :description "Common Lisp library for working with firebird databases(using fbclient)"
   :author "Klimenko Serj <klimenko.serj@gmail.com>"
   :license "MIT"
-  :version "0.3"
+  :version "0.4"
   :depends-on (#:cffi)
   :components ((:file "package")
 	       (:file "cl-fbclient-cffi")
