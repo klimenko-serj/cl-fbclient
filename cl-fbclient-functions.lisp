@@ -121,7 +121,7 @@
 ;-----------------------------------------------------------------------------------
 (defun alloc-vars-data (sqlda)
   (loop for i from 0 to (- (cffi:foreign-slot-value sqlda '(:struct xsqlda) 'sqld) 1) do
-       (multiple-value-bind (tp can-nil) (get-var-type sqlda i)
+       (let ((can-nil (nth-value 1 (get-var-type sqlda i))))
 	 (when can-nil
 	   (setf (cffi:foreign-slot-value 
 		  (cffi:mem-aptr 
@@ -172,13 +172,13 @@
 ;-----------------------------------------------------------------------------------
 (defun timestamp-alist-to-string (timestamp-alist)
   (format nil
-            "~A.~A.~A ~A:~A:~A"
-            (getf timestamp-alist :mday)
-            (getf timestamp-alist :mon)
-            (getf timestamp-alist :year)
-            (getf timestamp-alist :hour)
-            (getf timestamp-alist :min)
-            (getf timestamp-alist :sec)))
+	  "~A.~A.~A ~A:~A:~A"
+	  (getf timestamp-alist :mday)
+	  (getf timestamp-alist :mon)
+	  (getf timestamp-alist :year)
+	  (getf timestamp-alist :hour)
+	  (getf timestamp-alist :min)
+	  (getf timestamp-alist :sec)))
 ;-----------------------------------------------------------------------------------
 (defparameter *timestamp-alist-converter* #'timestamp-alist-to-string)
 ;-----------------------------------------------------------------------------------
@@ -205,21 +205,17 @@
     (T (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) type))))
 ;-----------------------------------------------------------------------------------
 (defun is-var-nil (xsqlda* index)
-  (if (nth-value 1 (get-var-type xsqlda* index))
-      (if (= -1 (cffi:mem-aref (cffi:foreign-slot-value 
-				    (cffi:mem-aptr 
-				     (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-				     '(:struct xsqlvar) index) 
-				    '(:struct xsqlvar) 'sqlind)
-				   :short))
-	  T
-	  Nil)
-      Nil))
+  (and (nth-value 1 (get-var-type xsqlda* index))
+       (= -1 (cffi:mem-aref (cffi:foreign-slot-value 
+			     (cffi:mem-aptr 
+				 (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+				 '(:struct xsqlvar) index) 
+				'(:struct xsqlvar) 'sqlind)
+			    :short))))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val (xsqlda* index)
-   (if (is-var-nil xsqlda* index) 
-       nil
-       (get-var-val-by-type xsqlda* index (nth-value 0 (get-var-type xsqlda* index)))))
+   (unless (is-var-nil xsqlda* index) 
+     (get-var-val-by-type xsqlda* index (nth-value 0 (get-var-type xsqlda* index)))))
 ;-----------------------------------------------------------------------------------
 (defun get-var-name (xsqlda* index)
   (cffi:foreign-string-to-lisp 
@@ -265,21 +261,24 @@
   (let ((msg* (cffi:foreign-alloc :char :initial-element 0 :count 1024))
 	(sql-code (isc-sqlcode status-vector*)))
     (unwind-protect 
-	 (if (/= sql-code -999) (progn
-				  (isc-sql-interprete sql-code msg* 1024)
-				  (format nil "~%(DSQL code: ~a): ~a" sql-code (cffi:foreign-string-to-lisp msg*)))
+	 (if (/= sql-code -999) 
+	     (progn
+	       (isc-sql-interprete sql-code msg* 1024)
+	       (format nil "~%(DSQL code: ~a): ~a" 
+		       sql-code (cffi:foreign-string-to-lisp msg*)))
 	     "")
       (cffi-sys:foreign-free msg*))))
 ;-----------------------------------------------------------------------------------
 (defun get-status-vector-msg (status-vector*)
   (let ((msg* (cffi:foreign-alloc :char :initial-element 0 :count 512))
 	(sv** (cffi:foreign-alloc :pointer :initial-element status-vector*)))
-    (let ((sz (isc-interprete msg* sv**)))
     (unwind-protect 
-	 (format nil "~a~a"
-		 (cffi:foreign-string-to-lisp msg*) 
-		 (get-status-vector-sql-msg status-vector*))
-      (cffi-sys:foreign-free msg*)))))
+	 (progn
+	   (isc-interprete msg* sv**)
+	   (format nil "~a~a"
+		   (cffi:foreign-string-to-lisp msg*) 
+		   (get-status-vector-sql-msg status-vector*)))
+      (cffi-sys:foreign-free msg*))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 
