@@ -286,10 +286,7 @@
 	    `(fb-with-statement (,(getf kpar :tr) tmp-stmt ,request-str)))
 	   (T 'ERR))
      `((when (eq (fb-get-sql-type tmp-stmt) 'select)
-	   ,(append 
-	     (if (member :header-names kpar)
-		  '(list (fb-statement-get-vars-names-list tmp-stmt))
-		  'Nil)
+	   ,(let ((bdy 
 	     (let*((mmbr-vars-names  (member :vars-names kpar))
                    (func (if mmbr-vars-names
                               (if (listp (second mmbr-vars-names))
@@ -302,7 +299,10 @@
                     `(when (fb-statement-fetch tmp-stmt)
                        ,func)
                     `(loop while (fb-statement-fetch tmp-stmt)
-		       collect ,func)))))))))
+		       collect ,func)))))
+		 (if (member :header-names kpar)
+		  `(cons (fb-statement-get-vars-names-list tmp-stmt) ,bdy)
+		  bdy)))))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 ;; QUERY functions 
