@@ -301,9 +301,8 @@
                     `(loop while (fb-statement-fetch ,tmp-stmt)
 		       collect ,func)))))
 		 (if (member :header-names kpar)
-		     (if (member :one-record kpar)
-			 `(cons (fb-statement-get-vars-names-list ,tmp-stmt) (list ,bdy))
-			 `(cons (fb-statement-get-vars-names-list ,tmp-stmt) ,bdy))
+		     `(cons (fb-statement-get-vars-names-list ,tmp-stmt) 
+			    ,(if (member :one-record kpar) `(list ,bdy) bdy))
 		     bdy)))))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
