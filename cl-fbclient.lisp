@@ -277,32 +277,34 @@
 ;; :one-record - Read only one record.
 ;-----------------------------------------------------------------------------------
 (defmacro fb-query (request-str &rest kpar)
-  (progn 
+  (let ((tmp-stmt (gensym "STMT"))) 
     (unless (evenp (length kpar)) (setf kpar (append kpar '(Nil))))
     (append 
      (cond ((getf kpar :db)
-	    `(fb-with-statement-db (,(getf kpar :db) tmp-stmt ,request-str)))
+	    `(fb-with-statement-db (,(getf kpar :db) ,tmp-stmt ,request-str)))
 	   ((getf kpar :tr)
-	    `(fb-with-statement (,(getf kpar :tr) tmp-stmt ,request-str)))
+	    `(fb-with-statement (,(getf kpar :tr) ,tmp-stmt ,request-str)))
 	   (T 'ERR))
-     `((when (eq (fb-get-sql-type tmp-stmt) 'select)
+     `((when (eq (fb-get-sql-type ,tmp-stmt) 'select)
 	   ,(let ((bdy 
 	     (let*((mmbr-vars-names  (member :vars-names kpar))
                    (func (if mmbr-vars-names
                               (if (listp (second mmbr-vars-names))
                                   `(fb-statement-get-vars-vals+names-list 
-                                    tmp-stmt 
+                                    ,tmp-stmt 
                                     ,(second mmbr-vars-names))
-                                  '(fb-statement-get-vars-vals+names-list tmp-stmt))
-                              '(fb-statement-get-vars-vals-list tmp-stmt))))
+                                  `(fb-statement-get-vars-vals+names-list ,tmp-stmt))
+                              `(fb-statement-get-vars-vals-list ,tmp-stmt))))
                 (if (member :one-record kpar)
-                    `(when (fb-statement-fetch tmp-stmt)
+                    `(when (fb-statement-fetch ,tmp-stmt)
                        ,func)
-                    `(loop while (fb-statement-fetch tmp-stmt)
+                    `(loop while (fb-statement-fetch ,tmp-stmt)
 		       collect ,func)))))
 		 (if (member :header-names kpar)
-		  `(cons (fb-statement-get-vars-names-list tmp-stmt) ,bdy)
-		  bdy)))))))
+		     (if (member :one-record kpar)
+			 `(cons (fb-statement-get-vars-names-list ,tmp-stmt) (list ,bdy))
+			 `(cons (fb-statement-get-vars-names-list ,tmp-stmt) ,bdy))
+		     bdy)))))))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 ;; QUERY functions 
