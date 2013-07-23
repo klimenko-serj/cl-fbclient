@@ -289,11 +289,11 @@
 	   ,(let ((bdy 
 	     (let*((mmbr-vars-names  (member :vars-names kpar))
                    (func (if mmbr-vars-names
-                              (if (listp (second mmbr-vars-names))
+                              (if (keywordp (second mmbr-vars-names))
+				  `(fb-statement-get-vars-vals+names-list ,tmp-stmt)
                                   `(fb-statement-get-vars-vals+names-list 
                                     ,tmp-stmt 
-                                    ,(second mmbr-vars-names))
-                                  `(fb-statement-get-vars-vals+names-list ,tmp-stmt))
+                                    ,(second mmbr-vars-names)))
                               `(fb-statement-get-vars-vals-list ,tmp-stmt))))
                 (if (member :one-record kpar)
                     `(when (fb-statement-fetch ,tmp-stmt)
