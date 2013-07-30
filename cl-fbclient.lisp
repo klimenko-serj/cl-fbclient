@@ -284,7 +284,7 @@
 	    `(fb-with-statement-db (,(getf kpar :db) ,tmp-stmt ,request-str)))
 	   ((getf kpar :tr)
 	    `(fb-with-statement (,(getf kpar :tr) ,tmp-stmt ,request-str)))
-	   (T 'ERR))
+	   (T `(fb-with-statement-db (*database-toplevel* ,tmp-stmt ,request-str))))
      `((when (eq (fb-get-sql-type ,tmp-stmt) 'select)
 	   ,(let ((bdy 
 	     (let*((mmbr-vars-names  (member :vars-names kpar))
@@ -336,5 +336,26 @@
     (append (list (fb-statement-get-vars-names-list st-tmp-name))
 	    (loop while (fb-statement-fetch st-tmp-name)
 	       collect (fb-statement-get-vars-vals-list st-tmp-name)))))
+;-----------------------------------------------------------------------------------
+;===================================================================================
+;; TOPLEVEL
+;-----------------------------------------------------------------------------------
+(defparameter *database-toplevel* nil)
+;-----------------------------------------------------------------------------------
+(defun fb-connect-toplevel (&key (host "localhost") path 
+			      (user-name "SYSDBA") (password "masterkey"))
+  (setf *database-toplevel* 
+	(make-instance 'FB-DATABASE 
+		       :host host
+		       :path path
+		       :user-name user-name
+		       :password password)))
+;-----------------------------------------------------------------------------------
+(defun fb-disconnect-toplevel ()
+  (fb-disconnect *database-toplevel*))
+;-----------------------------------------------------------------------------------
+(defmacro fb-with-toplevel-connection ((&rest params) &body body)
+  `(fb-with-database (*database-toplevel* ,@params)
+		     ,@body))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
