@@ -53,5 +53,6 @@
 	   :fb-connect-toplevel
 	   :fb-disconnect-toplevel
 	   :fb-with-toplevel-connection
+	   :*database-toplevel*
 	   ))
 
