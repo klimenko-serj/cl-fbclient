@@ -45,11 +45,16 @@
     dpb))
 ;-----------------------------------------------------------------------------------
 (defun connect-to-db (db-handle-pointer status-vector-pointer host+path login pass)
-  (isc-attach-database status-vector-pointer (length host+path) 
-		       (cffi:foreign-string-alloc host+path)
-		       db-handle-pointer
-		       (calc-dpb-size login pass)
-		       (make-dpb login pass)))
+  (let ((h+p (cffi:foreign-string-alloc host+path))
+	(dpb (make-dpb login pass)))
+    (unwind-protect
+	 (isc-attach-database status-vector-pointer (length host+path) 
+			      h+p ;; mem f??
+			      db-handle-pointer
+			      (calc-dpb-size login pass)
+			      dpb) ; mem f??
+      (cffi-sys:foreign-free h+p)
+      (cffi-sys:foreign-free dpb))))
 ;-----------------------------------------------------------------------------------
 (defun start-transaction (db-handle-pointer transaction-pointer status-vector-pointer)
   (isc-start-transaction status-vector-pointer transaction-pointer 1 
@@ -130,6 +135,21 @@
 		  '(:struct xsqlvar) 'sqlind) 
 		 (cffi:foreign-alloc :short)))
 	 (alloc-var-data-default sqlda i))))
+;-----------------------------------------------------------------------------------
+(defun free-vars-data (sqlda)
+  (loop for i from 0 to (- (cffi:foreign-slot-value sqlda '(:struct xsqlda) 'sqld) 1) do
+       (let ((can-nil (nth-value 1 (get-var-type sqlda i))))
+	 (when can-nil
+	   (cffi-sys:foreign-free (cffi:foreign-slot-value 
+				   (cffi:mem-aptr 
+				    (cffi:foreign-slot-pointer sqlda '(:struct xsqlda) 'sqlvar) 
+				    '(:struct xsqlvar) i) 
+				   '(:struct xsqlvar) 'sqlind)))
+	 (cffi-sys:foreign-free (cffi:foreign-slot-value 
+				 (cffi:mem-aptr 
+				  (cffi:foreign-slot-pointer sqlda '(:struct xsqlda) 'sqlvar) 
+				  '(:struct xsqlvar) i) 
+				 '(:struct xsqlvar) 'sqldata)))))
 ;-----------------------------------------------------------------------------------
 (defun get-sql-type (stmt-handle-pointer)
   (let ((status-vector* (make-status-vector))
@@ -278,7 +298,8 @@
 	   (format nil "~a~a"
 		   (cffi:foreign-string-to-lisp msg*) 
 		   (get-status-vector-sql-msg status-vector*)))
-      (cffi-sys:foreign-free msg*))))
+      (cffi-sys:foreign-free msg*)
+      (cffi-sys:foreign-free sv**)))) ;; mem free
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 

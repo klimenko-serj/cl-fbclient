@@ -138,7 +138,7 @@
 		      (transaction-handle* (fb-tr fb-stmt))
 		      (statement-handle* fb-stmt)
 		      0 
-		      (cffi:foreign-string-alloc (request-str fb-stmt)) 
+		      (cffi:foreign-string-alloc (request-str fb-stmt)) ; mem leak? 
 		      0 
 		      (cffi:null-pointer))
     (process-status-vector status-vector* 
@@ -160,7 +160,7 @@
 			 (xsqlda-output* fb-stmt))
       (process-status-vector status-vector* 
 			     32 "Error in isc-dsql-describe"))
-    (alloc-vars-data (xsqlda-output* fb-stmt))))
+    (alloc-vars-data (xsqlda-output* fb-stmt)))) ; mem leak?
 ;-----------------------------------------------------------------------------------
 (defun fb-execute-statement (fb-stmt)
   "Method to execute statement."
@@ -171,7 +171,6 @@
 		       1 
 		       (cffi:make-pointer 0))
      (process-status-vector status-vector* 33 "Unable to execute statement")))
-
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((stmt fb-statement) 
 				       &key (no-auto-execute Nil) 
@@ -185,6 +184,9 @@
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-free (stmt)
   "Method to free statement."
+  (when (xsqlda-output* stmt) 
+    (free-vars-data (xsqlda-output* stmt))
+    (cffi-sys:foreign-free (xsqlda-output* stmt))) ;; mem free
   (with-status-vector status-vector*
     (isc-dsql-free-statement status-vector* (statement-handle* stmt) 1)
     (process-status-vector status-vector* 35 "Unable to free statement")))
