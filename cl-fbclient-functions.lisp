@@ -49,11 +49,11 @@
 	(dpb (make-dpb login pass)))
     (unwind-protect
 	 (isc-attach-database status-vector-pointer (length host+path) 
-			      h+p ;; mem f??
+			      h+p 
 			      db-handle-pointer
 			      (calc-dpb-size login pass)
-			      dpb) ; mem f??
-      (cffi-sys:foreign-free h+p)
+			      dpb)
+      (cffi-sys:foreign-free h+p) ; mem 
       (cffi-sys:foreign-free dpb))))
 ;-----------------------------------------------------------------------------------
 (defun start-transaction (db-handle-pointer transaction-pointer status-vector-pointer)
@@ -95,12 +95,17 @@
 	   (T (format t "Uncknown type #~A!~%" type-num))
 	   ))
 ;-----------------------------------------------------------------------------------
+(defmacro %var (%xsqlda %index)
+  `(cffi:mem-aptr 
+    (cffi:foreign-slot-pointer ,%xsqlda '(:struct xsqlda) 'sqlvar)
+    '(:struct xsqlvar) ,%index))
+(defmacro %var-slot (%xsqlda %index %slot-name)
+  `(cffi:foreign-slot-value 
+    (%var ,%xsqlda ,%index)
+    '(:struct xsqlvar) ,%slot-name))
+;-----------------------------------------------------------------------------------
 (defun get-var-type (xsqlda* index)
-  (let ((tp (cffi:foreign-slot-value 
-		  (cffi:mem-aptr 
-		   (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
-		   '(:struct xsqlvar) index) 
-		  '(:struct xsqlvar) 'sqltype))
+  (let ((tp (%var-slot xsqlda* index 'sqltype))
 	(can-nil T))
     (if (oddp tp) 
         (decf tp)
@@ -109,51 +114,36 @@
 ;-----------------------------------------------------------------------------------
 (defun get-var-sqlln (xsqlda* index)
   (cffi:foreign-slot-value 
-   (cffi:mem-aptr 
-    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-    '(:struct xsqlvar) index) 
+   (%var xsqlda* index)
    '(:struct xsqlvar) 'sqllen))
 ;-----------------------------------------------------------------------------------
 (defun alloc-var-data-default (xsqlda* index)
-  (setf (cffi:foreign-slot-value 
-	 (cffi:mem-aptr 
-	  (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-	  '(:struct xsqlvar) index) 
-	 '(:struct xsqlvar) 'sqldata) 
+  (setf (%var-slot xsqlda* index 'sqldata) 
 	(cffi:foreign-alloc :char 
 			    :initial-element 0 
 			    :count (get-var-sqlln xsqlda* index))))
 ;-----------------------------------------------------------------------------------
-(defun alloc-vars-data (sqlda)
-  (loop for i from 0 to (- (cffi:foreign-slot-value sqlda '(:struct xsqlda) 'sqld) 1) do
-       (let ((can-nil (nth-value 1 (get-var-type sqlda i))))
+(defmacro %vars-count-1 (%xsqlda)
+  `(- (cffi:foreign-slot-value ,%xsqlda '(:struct xsqlda) 'sqld) 1))
+
+(defun alloc-vars-data (xsqlda*)
+  (loop for i from 0 to (%vars-count-1 xsqlda*) do
+       (let ((can-nil (nth-value 1 (get-var-type xsqlda* i))))
 	 (when can-nil
-	   (setf (cffi:foreign-slot-value 
-		  (cffi:mem-aptr 
-		   (cffi:foreign-slot-pointer sqlda '(:struct xsqlda) 'sqlvar) 
-		   '(:struct xsqlvar) i) 
-		  '(:struct xsqlvar) 'sqlind) 
+	   (setf (%var-slot xsqlda* i 'sqlind) 
 		 (cffi:foreign-alloc :short)))
-	 (alloc-var-data-default sqlda i))))
+	 (alloc-var-data-default xsqlda* i))))
 ;-----------------------------------------------------------------------------------
-(defun free-vars-data (sqlda)
-  (loop for i from 0 to (- (cffi:foreign-slot-value sqlda '(:struct xsqlda) 'sqld) 1) do
-       (let ((can-nil (nth-value 1 (get-var-type sqlda i))))
+(defun free-vars-data (xsqlda*)
+  (loop for i from 0 to (- (cffi:foreign-slot-value xsqlda* '(:struct xsqlda) 'sqld) 1) do
+       (let ((can-nil (nth-value 1 (get-var-type xsqlda* i))))
 	 (when can-nil
-	   (cffi-sys:foreign-free (cffi:foreign-slot-value 
-				   (cffi:mem-aptr 
-				    (cffi:foreign-slot-pointer sqlda '(:struct xsqlda) 'sqlvar) 
-				    '(:struct xsqlvar) i) 
-				   '(:struct xsqlvar) 'sqlind)))
-	 (cffi-sys:foreign-free (cffi:foreign-slot-value 
-				 (cffi:mem-aptr 
-				  (cffi:foreign-slot-pointer sqlda '(:struct xsqlda) 'sqlvar) 
-				  '(:struct xsqlvar) i) 
-				 '(:struct xsqlvar) 'sqldata)))))
+	   (cffi-sys:foreign-free (%var-slot xsqlda* i 'sqlind)))
+	 (cffi-sys:foreign-free (%var-slot xsqlda* i 'sqldata)))))
 ;-----------------------------------------------------------------------------------
 (defun get-sql-type (stmt-handle-pointer)
   (let ((status-vector* (make-status-vector))
-	(req* (cffi:foreign-alloc :char :initial-element 21))
+	(req* (cffi:foreign-alloc :char :initial-element 21)) 
 	(res* (cffi:foreign-alloc :char :count 8 :initial-element 0))
 	(st-type nil))
     (isc-dsql-sql-info status-vector* stmt-handle-pointer 1 req* 8 res*)
@@ -163,21 +153,24 @@
                     (3 'update)
                     (4 'delete)
                     (T nil)))
-    (cffi-sys:foreign-free req*)
-    (cffi-sys:foreign-free res*)
+    (cffi-sys:foreign-free req*) ; mem free.
+    (cffi-sys:foreign-free res*) ; mem free.
+    (cffi-sys:foreign-free status-vector*) ; mem free.
     st-type))
 ;-----------------------------------------------------------------------------------
 (defun xsqlda-get-var-val (xsqlda* index)
-  (cffi:foreign-slot-value (cffi:mem-aptr 
-			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-			    '(:struct xsqlvar) index) 
-			   '(:struct xsqlvar) 'sqldata))
+  (%var-slot xsqlda* index 'sqldata))
+  ;; (cffi:foreign-slot-value (cffi:mem-aptr 
+  ;; 			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+  ;; 			    '(:struct xsqlvar) index) 
+  ;; 			   '(:struct xsqlvar) 'sqldata))
 ;-----------------------------------------------------------------------------------
 (defun xsqlda-get-var-sqlscale (xsqlda* index)
-  (cffi:foreign-slot-value (cffi:mem-aptr 
-			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-			    '(:struct xsqlvar) index) 
-			   '(:struct xsqlvar) 'sqlscale))
+  (%var-slot xsqlda* index 'sqlscale))
+  ;; (cffi:foreign-slot-value (cffi:mem-aptr 
+  ;; 			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
+  ;; 			    '(:struct xsqlvar) index) 
+  ;; 			   '(:struct xsqlvar) 'sqlscale))
 ;-----------------------------------------------------------------------------------
 (defparameter +mulp-vector+ #(1 1e-1 1e-2 1e-3 1e-4 1e-5 1e-6 1e-7 1e-8 1e-9 1e-10
 				 1e-11 1e-12 1e-13 1e-14 1e-15 1e-16 1e-17 1e-18 1e-19 1e-20))
@@ -185,10 +178,17 @@
   (elt +mulp-vector+ (- n)))
 ;-----------------------------------------------------------------------------------
 (defun fb-timestamp2datetime-list (fb-timestamp)
+  ;; (let ((ttm (cffi:foreign-alloc '(:struct tm)))) ;; mem leak !!!
+  ;;   (isc-decode-timestamp fb-timestamp ttm)
+  ;;    (with-foreign-slots ((sec min hour mday mon year) ttm (:struct tm))
+  ;;      (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec))))
   (let ((ttm (cffi:foreign-alloc '(:struct tm))))
-    (isc-decode-timestamp fb-timestamp ttm)
-     (with-foreign-slots ((sec min hour mday mon year) ttm (:struct tm))
-       (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec))))
+    (unwind-protect
+         (progn
+           (isc-decode-timestamp fb-timestamp ttm)
+           (with-foreign-slots ((sec min hour mday mon year) ttm (:struct tm))
+             (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec)))
+      (cffi-sys:foreign-free ttm)))) ; mem free.
 ;-----------------------------------------------------------------------------------
 (defun timestamp-alist-to-string (timestamp-alist)
   (format nil
@@ -208,7 +208,7 @@
       timestamp-alist))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val-by-type (xsqlda* index type)
-  (cond 
+  (cond  ; case??
     ((eq type ':text)
      (cffi:foreign-string-to-lisp (xsqlda-get-var-val xsqlda* index)))
     ((eq type ':varying) 
@@ -226,12 +226,7 @@
 ;-----------------------------------------------------------------------------------
 (defun is-var-nil (xsqlda* index)
   (and (nth-value 1 (get-var-type xsqlda* index))
-       (= -1 (cffi:mem-aref (cffi:foreign-slot-value 
-			     (cffi:mem-aptr 
-				 (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-				 '(:struct xsqlvar) index) 
-				'(:struct xsqlvar) 'sqlind)
-			    :short))))
+       (= -1 (cffi:mem-aref (%var-slot xsqlda* index 'sqlind) :short))))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val (xsqlda* index)
    (unless (is-var-nil xsqlda* index) 
@@ -239,16 +234,18 @@
 ;-----------------------------------------------------------------------------------
 (defun get-var-name (xsqlda* index)
   (cffi:foreign-string-to-lisp 
-   (cffi:foreign-slot-value 
-    (cffi:mem-aptr 
-     (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
-     '(:struct xsqlvar) index)
-    '(:struct xsqlvar) 'sqlname)
-   :count (cffi:foreign-slot-value 
-	   (cffi:mem-aptr 
-	    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
-	    '(:struct xsqlvar) index)
-	   '(:struct xsqlvar) 'sqlname_length)))
+   (%var-slot xsqlda* index 'sqlname)
+   :count (%var-slot xsqlda* index 'sqlname_length)))
+   ;; (cffi:foreign-slot-value 
+   ;;  (cffi:mem-aptr 
+   ;;   (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
+   ;;   '(:struct xsqlvar) index)
+   ;;  '(:struct xsqlvar) 'sqlname)
+   ;; :count (cffi:foreign-slot-value 
+   ;; 	   (cffi:mem-aptr 
+   ;; 	    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
+   ;; 	    '(:struct xsqlvar) index)
+   ;; 	   '(:struct xsqlvar) 'sqlname_length)))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val+name (xsqlda* index)
   (list (intern (get-var-name xsqlda* index) "KEYWORD")
@@ -287,7 +284,7 @@
 	       (format nil "~%(DSQL code: ~a): ~a" 
 		       sql-code (cffi:foreign-string-to-lisp msg*)))
 	     "")
-      (cffi-sys:foreign-free msg*))))
+      (cffi-sys:foreign-free msg*)))) ; mem free.
 ;-----------------------------------------------------------------------------------
 (defun get-status-vector-msg (status-vector*)
   (let ((msg* (cffi:foreign-alloc :char :initial-element 0 :count 512))
@@ -298,8 +295,8 @@
 	   (format nil "~a~a"
 		   (cffi:foreign-string-to-lisp msg*) 
 		   (get-status-vector-sql-msg status-vector*)))
-      (cffi-sys:foreign-free msg*)
-      (cffi-sys:foreign-free sv**)))) ;; mem free
+      (cffi-sys:foreign-free msg*) ; mem free.
+      (cffi-sys:foreign-free sv**)))) ; mem free.
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
 
