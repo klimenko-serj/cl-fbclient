@@ -8,6 +8,7 @@
 
 	   :fb-connect
 	   :fb-disconnect
+	   :fb-connected-p
 
 	   :fb-start-transaction
 	   :fb-commit-transaction

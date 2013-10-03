@@ -47,7 +47,7 @@
 ;-----------------------------------------------------------------------------------
 (defclass fb-database ()
   ((db-handle* :accessor db-handle*
-	       :initform (make-db-handler)) ; mem leak??
+	       :initform nil) ;(make-db-handler)) ; mem leak??
    (host :accessor host
 	 :initarg :host
 	 :initform "localhost")
@@ -63,21 +63,25 @@
 ;-----------------------------------------------------------------------------------
 (defun fb-connect (fb-db)
   "Method to connect to the database."
-  (with-status-vector status-vector*
-    (let ((host+path (concatenate 'string (host fb-db) ":" (path fb-db))))
-      (connect-to-db (db-handle* fb-db) status-vector* host+path (user-name fb-db) (password fb-db))
-      (process-status-vector status-vector* 10 (format nil "Unable to connect ('~a')" host+path)))))
+  (unless (db-handle* fb-db)
+    (with-status-vector status-vector*
+      (let ((host+path (concatenate 'string (host fb-db) ":" (path fb-db))))
+	(setf (db-handle* fb-db) (make-db-handler))
+	(connect-to-db (db-handle* fb-db) status-vector* host+path (user-name fb-db) (password fb-db))
+	(process-status-vector status-vector* 10 (format nil "Unable to connect ('~a')" host+path))))))
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((db fb-database) &key (no-auto-connect Nil))
-  (progn (setf (db-handle* db) (make-db-handler))
-	 (when (null no-auto-connect) (fb-connect db))))
+;;  (progn (setf (db-handle* db) (make-db-handler))
+	 (when (null no-auto-connect) (fb-connect db)));)
 ;-----------------------------------------------------------------------------------
 (defun fb-disconnect (db)
   "Method to disconnect from the database."
-  (with-status-vector status-vector*
-    (isc-detach-database status-vector* (db-handle* db)) 
-    (process-status-vector status-vector* 11 "Error when disconnecting from DB")))
-;  (cffi-sys:foreign-free (db-handle* db))) ; mem free ??
+  (when (db-handle* db)
+    (with-status-vector status-vector*
+      (isc-detach-database status-vector* (db-handle* db)) 
+      (process-status-vector status-vector* 11 "Error when disconnecting from DB"))
+    (cffi-sys:foreign-free (db-handle* db)) ; mem free ??
+    (setf (db-handle* db) Nil)))
 ;-----------------------------------------------------------------------------------
 ;; FB-TRANSACTION
 ;-----------------------------------------------------------------------------------
@@ -102,15 +106,15 @@
   "Method to commit transaction."
   (with-status-vector status-vector*
     (isc-commit-transaction status-vector* (transaction-handle* tr)) 
-    (process-status-vector status-vector* 21 "Unable to commit transaction")))
-;  (cffi-sys:foreign-free (transaction-handle* tr))) ; mem free??
+    (process-status-vector status-vector* 21 "Unable to commit transaction"))
+  (cffi-sys:foreign-free (transaction-handle* tr))) ; mem free??
 ;-----------------------------------------------------------------------------------
 (defun fb-rollback-transaction (tr)
   "Method to rollback transaction."
   (with-status-vector status-vector*
     (isc-rollback-transaction status-vector* (transaction-handle* tr)) 
-    (process-status-vector status-vector* 22 "Unable to rollback transaction")))
-;;  (cffi-sys:foreign-free (transaction-handle* tr)))
+    (process-status-vector status-vector* 22 "Unable to rollback transaction"))
+(cffi-sys:foreign-free (transaction-handle* tr))) ;?
 ;-----------------------------------------------------------------------------------
 ;; FB-STATEMENT
 ;-----------------------------------------------------------------------------------
@@ -145,15 +149,16 @@
 			(statement-handle* fb-stmt)
 			0 
 			query-str* ;(cffi:foreign-string-alloc (request-str fb-stmt)) ; mem leak?? 
-			0 
+			1 ; 0 
 			(cffi:null-pointer)))
     (process-status-vector status-vector* 
 			   31 (format nil "Unable to prepare statement: ~a"
 						     (request-str fb-stmt))))
 
-    (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
-    (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
-
+  (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
+  
+  (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
+  
   (with-status-vector status-vector*
     (isc-dsql-describe status-vector* 
 		       (statement-handle* fb-stmt)
@@ -179,7 +184,7 @@
 		       (transaction-handle* (fb-tr fb-stmt))
 		       (statement-handle* fb-stmt)
 		       1 
-		       (cffi:make-pointer 0))
+		       (cffi-sys:null-pointer))
      (process-status-vector status-vector* 33 "Unable to execute statement")))
 ;-----------------------------------------------------------------------------------
 (defmethod initialize-instance :after ((stmt fb-statement) 
@@ -199,8 +204,8 @@
     (cffi-sys:foreign-free (xsqlda-output* stmt))) ; mem free.
   (with-status-vector status-vector*
     (isc-dsql-free-statement status-vector* (statement-handle* stmt) 1)
-    (process-status-vector status-vector* 35 "Unable to free statement")))
-;  (cffi-sys:foreign-free (statement-handle* stmt))) ??
+    (process-status-vector status-vector* 35 "Unable to free statement"))
+  (cffi-sys:foreign-free (statement-handle* stmt))) ;??
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-fetch (stmt)
   "Method to fetch results from executed statement."
@@ -373,3 +378,8 @@
 		     ,@body))
 ;-----------------------------------------------------------------------------------
 ;===================================================================================
+;-----------------------------------------------------------------------------------
+(defun fb-connected-p (&optional (fb-db *database-toplevel*))
+  ""
+  (if (db-handle* fb-db) T Nil))
+;-----------------------------------------------------------------------------------
