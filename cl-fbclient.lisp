@@ -157,6 +157,7 @@
 
   (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
   
+  ;;TODO: if (eq (st-type fb-stmt) 'select) ...
   (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
   
   (with-status-vector status-vector*

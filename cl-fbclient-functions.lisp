@@ -128,7 +128,7 @@
 
 (defun alloc-vars-data (xsqlda*)
   (loop for i from 0 to (%vars-count-1 xsqlda*) do
-       (let ((can-nil (nth-value 1 (get-var-type xsqlda* i))))
+       (let ((can-nil (nth-value 1 (get-var-type xsqlda* i)))) ;; TODO: -> when
 	 (when can-nil
 	   (setf (%var-slot xsqlda* i 'sqlind) 
 		 (cffi:foreign-alloc :short)))
