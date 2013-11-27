@@ -67,9 +67,9 @@
   
 ;-----------------------------------------------------------------------------------
 (defun start-transaction (db-handle-pointer transaction-pointer status-vector-pointer)
-  ;;TODO: TPB(...)
+  ;;TODO: TPB(...) 
   (isc-start-transaction status-vector-pointer transaction-pointer 1 
-			 db-handle-pointer 4 (make-default-tpb))) ; mem leak
+			 db-handle-pointer 0 (cffi-sys:null-pointer))) ; default TPB
 ;-----------------------------------------------------------------------------------
 (defun XSQLDA-length (n)
   (+ (cffi:foreign-type-size '(:struct XSQLDA)) 
