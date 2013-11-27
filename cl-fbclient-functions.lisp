@@ -135,7 +135,7 @@
 	 (alloc-var-data-default xsqlda* i))))
 ;-----------------------------------------------------------------------------------
 (defun free-vars-data (xsqlda*)
-  (loop for i from 0 to (- (cffi:foreign-slot-value xsqlda* '(:struct xsqlda) 'sqld) 1) do
+  (loop for i from 0 to (%vars-count-1 xsqlda*) do
        (let ((can-nil (nth-value 1 (get-var-type xsqlda* i))))
 	 (when can-nil
 	   (cffi-sys:foreign-free (%var-slot xsqlda* i 'sqlind)))
@@ -160,17 +160,9 @@
 ;-----------------------------------------------------------------------------------
 (defun xsqlda-get-var-val (xsqlda* index)
   (%var-slot xsqlda* index 'sqldata))
-  ;; (cffi:foreign-slot-value (cffi:mem-aptr 
-  ;; 			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-  ;; 			    '(:struct xsqlvar) index) 
-  ;; 			   '(:struct xsqlvar) 'sqldata))
 ;-----------------------------------------------------------------------------------
 (defun xsqlda-get-var-sqlscale (xsqlda* index)
   (%var-slot xsqlda* index 'sqlscale))
-  ;; (cffi:foreign-slot-value (cffi:mem-aptr 
-  ;; 			    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar) 
-  ;; 			    '(:struct xsqlvar) index) 
-  ;; 			   '(:struct xsqlvar) 'sqlscale))
 ;-----------------------------------------------------------------------------------
 (defparameter +mulp-vector+ #(1 1e-1 1e-2 1e-3 1e-4 1e-5 1e-6 1e-7 1e-8 1e-9 1e-10
 				 1e-11 1e-12 1e-13 1e-14 1e-15 1e-16 1e-17 1e-18 1e-19 1e-20))
@@ -178,10 +170,6 @@
   (elt +mulp-vector+ (- n)))
 ;-----------------------------------------------------------------------------------
 (defun fb-timestamp2datetime-list (fb-timestamp)
-  ;; (let ((ttm (cffi:foreign-alloc '(:struct tm)))) ;; mem leak !!!
-  ;;   (isc-decode-timestamp fb-timestamp ttm)
-  ;;    (with-foreign-slots ((sec min hour mday mon year) ttm (:struct tm))
-  ;;      (list  :year (+ 1900 year)  :mon (+ 1 mon) :mday mday :hour hour :min min :sec sec))))
   (let ((ttm (cffi:foreign-alloc '(:struct tm))))
     (unwind-protect
          (progn
@@ -236,16 +224,6 @@
   (cffi:foreign-string-to-lisp 
    (%var-slot xsqlda* index 'sqlname)
    :count (%var-slot xsqlda* index 'sqlname_length)))
-   ;; (cffi:foreign-slot-value 
-   ;;  (cffi:mem-aptr 
-   ;;   (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
-   ;;   '(:struct xsqlvar) index)
-   ;;  '(:struct xsqlvar) 'sqlname)
-   ;; :count (cffi:foreign-slot-value 
-   ;; 	   (cffi:mem-aptr 
-   ;; 	    (cffi:foreign-slot-pointer xsqlda* '(:struct xsqlda) 'sqlvar)
-   ;; 	    '(:struct xsqlvar) index)
-   ;; 	   '(:struct xsqlvar) 'sqlname_length)))
 ;-----------------------------------------------------------------------------------
 (defun get-var-val+name (xsqlda* index)
   (list (intern (get-var-name xsqlda* index) "KEYWORD")

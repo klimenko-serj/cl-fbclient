@@ -157,26 +157,26 @@
 
   (setf (st-type fb-stmt) (get-sql-type (statement-handle* fb-stmt)))
   
-  ;;TODO: if (eq (st-type fb-stmt) 'select) ...
-  (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
-  
-  (with-status-vector status-vector*
-    (isc-dsql-describe status-vector* 
-		       (statement-handle* fb-stmt)
-		       1 
-		       (xsqlda-output* fb-stmt))
-    (process-status-vector status-vector* 
-			   32 "Error in isc-dsql-describe"))
-  (when (need-remake-xsqlda (xsqlda-output* fb-stmt))
-    (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
+  (when (eq (fb-get-sql-type fb-stmt) 'select)
+    (setf (xsqlda-output* fb-stmt) (make-xsqlda 10))
+    
     (with-status-vector status-vector*
       (isc-dsql-describe status-vector* 
 			 (statement-handle* fb-stmt)
 			 1 
 			 (xsqlda-output* fb-stmt))
       (process-status-vector status-vector* 
-			     32 "Error in isc-dsql-describe")))
-  (alloc-vars-data (xsqlda-output* fb-stmt)))
+			     32 "Error in isc-dsql-describe"))
+    (when (need-remake-xsqlda (xsqlda-output* fb-stmt))
+      (setf (xsqlda-output* fb-stmt) (remake-xsqlda (xsqlda-output* fb-stmt)))
+      (with-status-vector status-vector*
+	(isc-dsql-describe status-vector* 
+			   (statement-handle* fb-stmt)
+			   1 
+			   (xsqlda-output* fb-stmt))
+	(process-status-vector status-vector* 
+			       32 "Error in isc-dsql-describe")))
+    (alloc-vars-data (xsqlda-output* fb-stmt))))
 ;-----------------------------------------------------------------------------------
 (defun fb-execute-statement (fb-stmt)
   "Method to execute statement."
