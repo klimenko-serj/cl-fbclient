@@ -134,6 +134,14 @@
   (isc_one :unsigned-short)
   (isc_xsqlda :pointer))
 ;-----------------------------------------------------------------------------------
+(cffi:defcfun "isc_dsql_execute2" :long
+  (isc_status_vect :pointer)
+  (isc_tr_h :pointer)
+  (isc_stmp_h :pointer)
+  (isc_one :unsigned-short)
+  (isc_xsqlda_in :pointer)
+  (isc_xsqlda_out :pointer))
+;-----------------------------------------------------------------------------------
 (cffi:defcfun "isc_dsql_fetch" :long
   (isc_status_vect :pointer)
   (isc_stmp_h :pointer)

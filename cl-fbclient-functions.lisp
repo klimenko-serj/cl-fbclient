@@ -53,12 +53,23 @@
 			      db-handle-pointer
 			      (calc-dpb-size login pass)
 			      dpb)
-      (cffi-sys:foreign-free h+p) ; mem 
-      (cffi-sys:foreign-free dpb))))
+      (cffi-sys:foreign-free h+p)))) ; mem 
+      ;;(cffi-sys:foreign-free dpb)))) ;; error???
+;-----------------------------------------------------------------------------------
+(defun make-default-tpb ()
+  (let ((tpb (cffi:foreign-alloc :char :count 4)))
+    (setf (cffi:mem-aref tpb :char 0) 3 ;isc_tpb_version3
+	  (cffi:mem-aref tpb :char 1) 9 ;isc_tpb_write
+	  (cffi:mem-aref tpb :char 2) 2 ;isc_tpb_concurrency
+	  (cffi:mem-aref tpb :char 3) 6) ;isc_tpb_wait
+	 ; (cffi:mem-aref tpb :char 4) 14) ;isc_ignore_limbo
+    tpb))
+  
 ;-----------------------------------------------------------------------------------
 (defun start-transaction (db-handle-pointer transaction-pointer status-vector-pointer)
+  ;;TODO: TPB(...)
   (isc-start-transaction status-vector-pointer transaction-pointer 1 
-			 db-handle-pointer 0 (cffi-sys:make-pointer 0)))
+			 db-handle-pointer 4 (make-default-tpb))) ; mem leak
 ;-----------------------------------------------------------------------------------
 (defun XSQLDA-length (n)
   (+ (cffi:foreign-type-size '(:struct XSQLDA)) 
