@@ -58,7 +58,10 @@
 	      :initform "SYSDBA")
    (password :accessor password
 	     :initarg :password
-	     :initform "masterkey"))
+	     :initform "masterkey")
+   (encoding :accessor encoding
+	     :initarg :encoding
+	     :initform :utf-8))
   (:documentation "Class that handles database connection"))
 ;-----------------------------------------------------------------------------------
 (defun fb-connect (fb-db)
@@ -228,23 +231,28 @@
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-get-var-val (stmt index)
   "A method for obtaining the values of result variables. Used after Fetch."
-  (get-var-val (xsqlda-output* stmt) index))
+  (let ((cffi:*default-foreign-encoding* (encoding (fb-db (fb-tr stmt)))))
+    (get-var-val (xsqlda-output* stmt) index)))
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-get-vars-vals-list (stmt)
   "A method for obtaining the list of values ​​of result variables. Used after Fetch."
-  (get-vars-vals-list (xsqlda-output* stmt)))
+  (let ((cffi:*default-foreign-encoding* (encoding (fb-db (fb-tr stmt)))))
+    (get-vars-vals-list (xsqlda-output* stmt))))
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-get-var-val+name (stmt index)
   "A method for obtaining the values and names of result variables. Used after Fetch."
-  (get-var-val+name (xsqlda-output* stmt) index))
+  (let ((cffi:*default-foreign-encoding* (encoding (fb-db (fb-tr stmt)))))
+    (get-var-val+name (xsqlda-output* stmt) index)))
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-get-vars-vals+names-list (stmt &optional (names Nil))
   "A method for obtaining the list of values and names of result variables. Used after Fetch."
-  (get-vars-vals+names-list (xsqlda-output* stmt) names))
+  (let ((cffi:*default-foreign-encoding* (encoding (fb-db (fb-tr stmt)))))
+    (get-vars-vals+names-list (xsqlda-output* stmt) names)))
 ;-----------------------------------------------------------------------------------
 (defun fb-statement-get-vars-names-list (stmt)
   "A method for obtaining names of result variables. Used after Fetch."
-  (get-vars-names (xsqlda-output* stmt)))
+  (let ((cffi:*default-foreign-encoding* (encoding (fb-db (fb-tr stmt)))))
+    (get-vars-names (xsqlda-output* stmt))))
 ;===================================================================================
 ;; 'FB-WIDTH-..' and 'FB-LOOP-..' macroses
 ;-----------------------------------------------------------------------------------
