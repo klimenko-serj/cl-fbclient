@@ -76,8 +76,8 @@
      (* (- n 1) (cffi:foreign-type-size '(:struct XSQLVAR)))))
 ;-----------------------------------------------------------------------------------
 (defun make-xsqlda (n)
-  (let ((new-xsqlda (cffi:foreign-alloc :char :count (XSQLDA-length n) 
-					:initial-element 0)))
+  (let ((new-xsqlda (cffi:foreign-alloc :char :count (XSQLDA-length n))))
+					;;:initial-element 0))) speed optimization?
      (setf (cffi:foreign-slot-value new-xsqlda '(:struct xsqlda) 'version) 1
 	   (cffi:foreign-slot-value new-xsqlda '(:struct xsqlda) 'sqln) n)
      new-xsqlda))
