@@ -16,6 +16,7 @@
 (cffi:defctype isc_stmt_handle :unsigned-int)
 (cffi:defctype isc_date :int)
 (cffi:defctype isc_time :unsigned-int)
+(cffi:defctype isc_blob_handle :unsigned-int)
 
 ;===================================================================================
 (cffi:defcstruct XSQLVAR 
@@ -170,4 +171,25 @@
   (_timestamp :pointer)
   (_struct_tm :pointer))
 ;-----------------------------------------------------------------------------------
+(cffi:defcfun "isc_open_blob2" :long
+   (isc_status_vect :pointer)
+   (isc_db_handle :pointer)
+   (isc_tr_handle :pointer)
+   (isc_blob_handle :pointer)
+   (isc_quad_blob_id :pointer)
+   (ISC_USHORT :unsigned-short)
+   (bpb :pointer))
+;-----------------------------------------------------------------------------------
+(cffi:defcfun "isc_close_blob" :long
+   (isc_status_vect :pointer)
+   (isc_blob_handle :pointer))
+;-----------------------------------------------------------------------------------
+(cffi:defcfun "isc_get_segment" :long
+   (isc_status_vect :pointer)
+   (isc_blob_handle :pointer)
+   (actual_seg_len :pointer)
+   (buff_size :unsigned-short)
+   (buffer :pointer))
+
+
 ;===================================================================================
