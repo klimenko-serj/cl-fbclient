@@ -167,8 +167,31 @@
       (funcall *timestamp-alist-converter* timestamp-alist)
       timestamp-alist))
 ;;===================================================================================
-
-
+;; blob
+;;-----------------------------------------------------------------------------------
+(defun make-blob-handler ()
+  (cffi:foreign-alloc 'isc_blob_handle :initial-element 0))
+;;-----------------------------------------------------------------------------------
+(defclass fb-blob ()
+  ((fb-tr :accessor fb-tr
+	  :initarg :fb-tr)
+   (blob-id :accessor fb-blob-id
+	    :initarg :id)
+   (blob-handle :accessor fb-blob-handle
+		:initform nil)))
+;;-----------------------------------------------------------------------------------
+(defun fb-blob-open (blob)
+  (setf (fb-blob-handle blob) (make-blob-handler))
+  (with-status-vector sv* 
+    (isc-open-blob2 sv* 
+		    (db-handle* (fb-db (fb-tr blob)))
+		    (transaction-handle* (fb-tr blob))
+		    (fb-blob-handle blob)
+		    (fb-blob-id blob)
+		    0
+		    (cffi-sys:null-pointer)))) ;TODO: process status vector
+;;-----------------------------------------------------------------------------------
+;TODO: blob-close, blob-read,....etc
 ;;===================================================================================
 
 ;;===================================================================================
@@ -307,7 +330,10 @@
      (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) 
 	(pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
       ((eq type ':blob)
-       (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) '(:struct ISC_QUAD)))
+       (make-instance 'fb-blob 
+		      :fb-tr (fb-tr stmt) 
+		      :id (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) 
+					 '(:struct ISC_QUAD)))) ; TODO: Test it!
       (T (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) type)))))
 ;;-----------------------------------------------------------------------------------
 (defun get-var-val (stmt index)
