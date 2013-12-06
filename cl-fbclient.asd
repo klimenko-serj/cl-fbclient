@@ -9,6 +9,10 @@
   :depends-on (#:cffi)
   :components ((:file "package")
 	       (:file "cl-fbclient-cffi")
-	       (:file "cl-fbclient-functions")
+	       ;;(:file "cl-fbclient-functions")
+	       (:file "cl-fbclient-error")
+	       (:file "cl-fbclient-database")
+	       (:file "cl-fbclient-transaction")
+	       (:file "cl-fbclient-statement")
                (:file "cl-fbclient")))
 

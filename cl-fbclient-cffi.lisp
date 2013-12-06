@@ -16,6 +16,7 @@
 (cffi:defctype isc_stmt_handle :unsigned-int)
 (cffi:defctype isc_date :int)
 (cffi:defctype isc_time :unsigned-int)
+
 ;===================================================================================
 (cffi:defcstruct XSQLVAR 
   (sqltype :short)
@@ -57,6 +58,10 @@
   (isdst  :boolean)
   (zone   :string)
   (gmtoff :long))
+;-----------------------------------------------------------------------------------
+(defcstruct ISC_QUAD
+  (gds_quad_high :long)
+  (gds_quad_low :unsigned-long))
 ;===================================================================================
 (cffi:defcfun "isc_attach_database" :long 
   (isc_status_vect :pointer)
