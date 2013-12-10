@@ -189,9 +189,25 @@
 		    (fb-blob-handle blob)
 		    (fb-blob-id blob)
 		    0
-		    (cffi-sys:null-pointer)))) ;TODO: process status vector
+		    (cffi-sys:null-pointer))
+    (process-status-vector sv* 51 "Unable to open blob."))) ;TODO: process status vector
 ;;-----------------------------------------------------------------------------------
-;TODO: blob-close, blob-read,....etc
+(defun fb-blob-close (blob)
+  (with-status-vector sv*
+    (isc-close-blob sv* (fb-blob-handle blob))
+    (process-status-vector sv* 52 "Unable to close blob.")) ;TODO: process status vector
+  (cffi:foreign-free (fb-blob-handle blob)))  
+;;-----------------------------------------------------------------------------------
+(defun fb-blob-read (blob buffer-size)
+  (let* ((buffer (cffi:foreign-alloc :char :count buffer-size))
+	 (bytes-read (cffi:foreign-alloc :unsigned-short))
+	 (answ (with-status-vector sv*
+		 (isc-get-segment sv* (fb-blob-handle blob) 
+				  bytes-read buffer-size buffer))))
+    (values buffer answ bytes-read)))
+    
+;;-----------------------------------------------------------------------------------
+;TODO: ....etc
 ;;===================================================================================
 
 ;;===================================================================================
@@ -327,13 +343,16 @@
 	(fb-timestamp2datetime-list (mem-aptr (xsqlda-get-var-val xsqlda* index) 
 					      '(:struct isc_timestamp)))))
       ((eq type ':decimal)
-     (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) 
-	(pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
+       (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) 
+	  (pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
       ((eq type ':blob)
        (make-instance 'fb-blob 
 		      :fb-tr (fb-tr stmt) 
-		      :id (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) 
-					 '(:struct ISC_QUAD)))) ; TODO: Test it!
+		      :id (let ((id (foreign-alloc '(:struct ISC_QUAD))))
+			    (setf (mem-aref id '(:struct ISC_QUAD))
+				  (mem-aref (xsqlda-get-var-val xsqlda* index) 
+					    '(:struct ISC_QUAD)))
+			    id))) ; TODO: Test it!
       (T (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) type)))))
 ;;-----------------------------------------------------------------------------------
 (defun get-var-val (stmt index)

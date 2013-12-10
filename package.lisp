@@ -50,10 +50,13 @@
 
            :*timestamp-alist-converter*
            :timestamp-alist-to-string
-
+	   
 	   :fb-connect-toplevel
 	   :fb-disconnect-toplevel
 	   :fb-with-toplevel-connection
 	   :*database-toplevel*
-	   ))
 
+	   :fb-blob-open
+	   :fb-blob-read
+	   :fb-blob-close
+	   ))
