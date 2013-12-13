@@ -16,6 +16,7 @@ Supported SQL-vars types:
 - decimal(numeric)
 - varchar
 - timestamp
+- BLOB
 
 -----------
 **Examples:**
@@ -72,7 +73,8 @@ Documentation: <a href="http://github.com/klimenko-serj/cl-fbclient/wiki">**cl-f
 
 TODO:
 ---------------
-- Create support types: date, time, array, BLOB
+- Add 'get metainfo' functions
+- Create support types: date, time, array
 - Add docstrings
 - support WIKI.
 - ...
