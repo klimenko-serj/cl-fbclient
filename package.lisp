@@ -59,4 +59,8 @@
 	   :fb-blob-open
 	   :fb-blob-read
 	   :fb-blob-close
+	   :fb-blob-load
+	   :*fb-blob-read-block-size*
+	   :*blob-converter*
+	   :fb-blob-to-string-converter
 	   ))

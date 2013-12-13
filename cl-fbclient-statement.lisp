@@ -198,14 +198,48 @@
     (process-status-vector sv* 52 "Unable to close blob.")) ;TODO: process status vector
   (cffi:foreign-free (fb-blob-handle blob)))  
 ;;-----------------------------------------------------------------------------------
-(defun fb-blob-read (blob buffer-size)
-  (let* ((buffer (cffi:foreign-alloc :char :count buffer-size))
+(defparameter *fb-blob-read-block-size* 1024)
+;;-----------------------------------------------------------------------------------
+(defun fb-blob-read (blob &key (buffer-size *fb-blob-read-block-size*) 
+			    (buffer (cffi:foreign-alloc :char :count buffer-size)))
+  (let* (;(buffer (cffi:foreign-alloc :char :count buffer-size))
 	 (bytes-read (cffi:foreign-alloc :unsigned-short))
 	 (answ (with-status-vector sv*
 		 (isc-get-segment sv* (fb-blob-handle blob) 
 				  bytes-read buffer-size buffer))))
-    (values buffer answ bytes-read)))
-    
+    (unwind-protect (values buffer answ (mem-aref bytes-read :unsigned-short))
+      (foreign-free bytes-read))))
+;;-----------------------------------------------------------------------------------
+(defun fb-blob-load (blob)
+  (fb-blob-open blob)
+  (unwind-protect 
+       (let ((data (cffi:foreign-alloc :char :count *fb-blob-read-block-size*))
+	     (pos 0)
+	     (temp-data Nil))
+	 (loop do
+	      
+	      (multiple-value-bind (buff answ bytes-read)
+		  (fb-blob-read blob :buffer (inc-pointer data pos))
+		(declare (ignore buff))
+		(incf pos bytes-read)
+		(if (= answ 0)
+		    (return (values data pos)) ;TODO: resize data??
+		    (progn 
+		      (setf temp-data data)
+		      (setf data (cffi:foreign-alloc 
+				  :char :count (+ pos *fb-blob-read-block-size*)))
+		      (cffi:foreign-funcall "memcpy" :pointer data 
+					    :pointer temp-data :int pos)
+		      (cffi:foreign-free temp-data))))))
+    (fb-blob-close blob)))
+;;-----------------------------------------------------------------------------------
+(defun fb-blob-to-string-convertor (blob)
+  (multiple-value-bind (data size) (fb-blob-load blob)
+    (unwind-protect 
+	 (foreign-string-to-lisp data :count size)
+      (foreign-free data))))
+;;-----------------------------------------------------------------------------------
+(defparameter *blob-convertor* #'fb-blob-to-string-convertor)
 ;;-----------------------------------------------------------------------------------
 ;TODO: ....etc
 ;;===================================================================================
@@ -331,13 +365,13 @@
 ;;-----------------------------------------------------------------------------------
 (defun get-var-val-by-type (stmt index type)
   (let ((xsqlda* (xsqlda-output* stmt)))
-    (cond  ; case??
+    (cond ;case type
       ((eq type ':text)
        (cffi:foreign-string-to-lisp (xsqlda-get-var-val xsqlda* index)))
       ((eq type ':varying) 
-     (cffi:foreign-string-to-lisp  (inc-pointer (xsqlda-get-var-val xsqlda* index) 2)
-				   :count (mem-aref (xsqlda-get-var-val xsqlda* index)
-						    :short)))
+       (cffi:foreign-string-to-lisp  (inc-pointer (xsqlda-get-var-val xsqlda* index) 2)
+				     :count (mem-aref (xsqlda-get-var-val xsqlda* index)
+						      :short)))
       ((eq type ':timestamp)
        (convert-timestamp-alist
 	(fb-timestamp2datetime-list (mem-aptr (xsqlda-get-var-val xsqlda* index) 
@@ -346,13 +380,16 @@
        (* (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) :long) 
 	  (pow-10 (xsqlda-get-var-sqlscale xsqlda* index))))
       ((eq type ':blob)
-       (make-instance 'fb-blob 
-		      :fb-tr (fb-tr stmt) 
-		      :id (let ((id (foreign-alloc '(:struct ISC_QUAD))))
-			    (setf (mem-aref id '(:struct ISC_QUAD))
-				  (mem-aref (xsqlda-get-var-val xsqlda* index) 
-					    '(:struct ISC_QUAD)))
-			    id))) ; TODO: Test it!
+       (let ((blob (make-instance 'fb-blob 
+				  :fb-tr (fb-tr stmt) 
+				  :id (let ((id (foreign-alloc '(:struct ISC_QUAD))))
+					(setf (mem-aref id '(:struct ISC_QUAD))
+					      (mem-aref (xsqlda-get-var-val xsqlda* index) 
+							'(:struct ISC_QUAD)))
+					id)))) ; TODO: Test it!
+	 (if *blob-convertor*  
+	     (funcall *blob-convertor* blob)
+	     blob)))
       (T (cffi:mem-aref (xsqlda-get-var-val xsqlda* index) type)))))
 ;;-----------------------------------------------------------------------------------
 (defun get-var-val (stmt index)
