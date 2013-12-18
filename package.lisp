@@ -25,6 +25,8 @@
 	   :fb-statement-get-vars-names-list
 	   :fb-statement-get-var-val+name
 	   :fb-statement-get-vars-vals+names-list
+	   :fb-statement-get-var-info
+	   :fb-statement-get-vars-info
 	   :fb-get-sql-type
 
 	   :fb-with-database

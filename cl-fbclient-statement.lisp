@@ -127,12 +127,23 @@
    :count (%var-slot xsqlda* index 'sqlname_length)))
 ;;-----------------------------------------------------------------------------------
 (defun get-vars-names (xsqlda*)
-  (loop for i from 0 to (- (get-vars-count xsqlda*) 1) collect (get-var-name xsqlda* i)))
+  (loop for i from 0 to (- (get-vars-count xsqlda*) 1) 
+     collect (get-var-name xsqlda* i)))
 ;;-----------------------------------------------------------------------------------
 (defun get-vars-count (xsqlda*)
   (cffi:foreign-slot-value xsqlda* '(:struct xsqlda) 'sqld))
 ;;-----------------------------------------------------------------------------------
-
+(defun get-var-info (xsqlda* index)
+  (list :name (get-var-name xsqlda* index)
+	:type (get-var-type xsqlda* index)
+	:size (get-var-sqlln xsqlda* index)
+	:maybe-nil (nth-value 1 (get-var-type xsqlda* index))))
+;;-----------------------------------------------------------------------------------
+(defun get-vars-info (xsqlda*)
+  (loop for i from 0 to (%vars-count-1 xsqlda*)
+       collect (get-var-info xsqlda* i)))
+;;-----------------------------------------------------------------------------------
+  
 ;;===================================================================================
 ;; timestamp
 ;;-----------------------------------------------------------------------------------
@@ -442,4 +453,12 @@
   "A method for obtaining names of result variables. Used after Fetch."
   (let ((cffi:*default-foreign-encoding* (encoding (fb-db (fb-tr stmt)))))
     (get-vars-names  stmt)))
+;;-----------------------------------------------------------------------------------
+(defun fb-statement-get-var-info (stmt index)
+  (get-var-info (xsqlda-output* stmt) index))
+;;-----------------------------------------------------------------------------------
+(defun fb-statement-get-vars-info (stmt)
+  (get-vars-info (xsqlda-output* stmt)))
+;;-----------------------------------------------------------------------------------
+
 ;;===================================================================================
